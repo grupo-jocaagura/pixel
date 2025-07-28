@@ -1,0 +1,25 @@
+name: pixel
+description: "Una aplicación educativa multiplataforma (Web y Windows) construida en Flutter para ilustrar de forma práctica cómo un simple “píxel” puede cobrar vida a través de la interacción y la animación."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+version: 0.0.1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  jocaagura_domain: ^1.21.2
+  text_responsive: ^1.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
