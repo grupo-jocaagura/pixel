@@ -100,4 +100,8 @@ class ModelPixel extends Model {
   /// A concise string representation for debugging: includes x, y, and color.
   @override
   String toString() => 'Pixel(x: $x, y: $y, color: $hexColor)';
+
+  String get keyForCanvas {
+    return '${vector.dx.round()},${vector.dy.round()}';
+  }
 }

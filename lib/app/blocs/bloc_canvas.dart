@@ -220,8 +220,7 @@ class BlocCanvas extends BlocModule {
       y,
       hexColor: UtilColor.colorToHex(selectedColor),
     );
-    // Si ya existía, lo removemos
-    if (canvas.pixels.containsKey('${x.toDouble()},${y.toDouble()}')) {
+    if (canvas.pixels.containsKey(pixel.keyForCanvas)) {
       removePixel(pixel);
     } else {
       addPixel(pixel);

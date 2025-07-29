@@ -78,7 +78,6 @@ class GatewayCanvasImpl implements GatewayCanvas {
 
   @override
   Stream<Either<ErrorItem, Map<String, dynamic>>> watch(String docId) {
-    print('OBSERVANDO $docId');
     return _db
         .documentStream(collection: collection, docId: docId)
         .map<Either<ErrorItem, Map<String, dynamic>>>(

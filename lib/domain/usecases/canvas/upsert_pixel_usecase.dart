@@ -12,7 +12,7 @@ class UpsertPixelUseCase {
     required ModelCanvas canvas,
     required ModelPixel pixel,
   }) async {
-    final String key = '${pixel.x},${pixel.y}';
+    final String key = pixel.keyForCanvas;
     final ModelCanvas updated = canvas.copyWith(
       pixels: <String, ModelPixel>{...canvas.pixels, key: pixel},
     );

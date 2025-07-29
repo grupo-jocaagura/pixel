@@ -12,7 +12,13 @@ class RemovePixelUseCase {
     required ModelCanvas canvas,
     required ModelVector position,
   }) async {
-    final String key = '${position.dx.round()},${position.dy.round()}';
+    final ModelPixel pixel = ModelPixel.fromCoord(
+      position.dx.round(),
+      position.dy.round(),
+      hexColor: ModelPixel.defaultHexColor,
+    );
+
+    final String key = pixel.keyForCanvas;
     final Map<String, ModelPixel> updatedPixels = Map<String, ModelPixel>.from(
       canvas.pixels,
     )..remove(key);
