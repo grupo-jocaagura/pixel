@@ -43,6 +43,7 @@ class BlocCanvas extends BlocModule {
   final WatchCanvasUseCase watchCanvasUseCase;
   final BlocLoading blocLoading;
 
+  final Debouncer _saveDebouncer = Debouncer(milliseconds: 300);
   // Estado principal: el canvas
   final BlocGeneral<ModelCanvas> _blocCanvas = BlocGeneral<ModelCanvas>(
     defaultModelCanvas,
@@ -117,7 +118,7 @@ class BlocCanvas extends BlocModule {
         width: width,
         height: height,
       );
-      save();
+      _saveDebouncer(save);
     }
   }
 
@@ -207,7 +208,7 @@ class BlocCanvas extends BlocModule {
     _blocGridLineColor.value = isOn
         ? Colors.transparent
         : UtilColor.gridLineColor;
-    save();
+    _saveDebouncer(save);
   }
 
   /// Manejo de taps en el lienzo (no persiste, solo local).
