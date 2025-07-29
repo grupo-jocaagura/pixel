@@ -8,6 +8,8 @@ import 'data/gateways/gateway_canvas_impl.dart';
 import 'data/repositories/repository_canvas_impl.dart';
 import 'domain/gateways/gateway_canvas.dart';
 import 'domain/repositories/repository_canvas.dart';
+import 'domain/usecases/canvas/batch_remove_pixels_usecase.dart';
+import 'domain/usecases/canvas/batch_upsert_pixel_usecase.dart';
 import 'domain/usecases/canvas/clear_canvas_usecase.dart';
 import 'domain/usecases/canvas/create_canvas_usecase.dart';
 import 'domain/usecases/canvas/load_canvas_usecase.dart';
@@ -32,6 +34,8 @@ void main() => runApp(
       createUseCase: CreateCanvasUseCase(repositoryCanvas),
       removePixelUseCase: RemovePixelUseCase(repositoryCanvas),
       watchCanvasUseCase: WatchCanvasUseCase(repositoryCanvas),
+      batchRemovePixelsUseCase: BatchRemovePixelsUseCase(repositoryCanvas),
+      batchUpsertPixelsUseCase: BatchUpsertPixelsUseCase(repositoryCanvas),
     ),
     child: MaterialApp(
       title: 'Pixel',

@@ -5,6 +5,8 @@ import 'package:jocaagura_domain/jocaagura_domain.dart';
 
 import '../../domain/models/model_canvas.dart';
 import '../../domain/models/model_pixel.dart';
+import '../../domain/usecases/canvas/batch_remove_pixels_usecase.dart';
+import '../../domain/usecases/canvas/batch_upsert_pixel_usecase.dart';
 import '../../domain/usecases/canvas/clear_canvas_usecase.dart';
 import '../../domain/usecases/canvas/create_canvas_usecase.dart';
 import '../../domain/usecases/canvas/load_canvas_usecase.dart';
@@ -25,6 +27,8 @@ class BlocCanvas extends BlocModule {
     required this.clearCanvasUseCase,
     required this.blocLoading,
     required this.watchCanvasUseCase,
+    required this.batchRemovePixelsUseCase,
+    required this.batchUpsertPixelsUseCase,
   }) {
     _init();
   }
@@ -42,6 +46,8 @@ class BlocCanvas extends BlocModule {
   final ClearCanvasUseCase clearCanvasUseCase;
   final WatchCanvasUseCase watchCanvasUseCase;
   final BlocLoading blocLoading;
+  final BatchUpsertPixelsUseCase batchUpsertPixelsUseCase;
+  final BatchRemovePixelsUseCase batchRemovePixelsUseCase;
 
   final Debouncer _saveDebouncer = Debouncer(milliseconds: 300);
   // Estado principal: el canvas
@@ -242,6 +248,32 @@ class BlocCanvas extends BlocModule {
     } else {
       addPixel(pixel);
     }
+  }
+
+  /// Aplica un lote de píxeles (e.g. flood fill).
+  Future<void> batchAddPixels(List<ModelPixel> pixels) async {
+    _errorBloc.value = null;
+    blocLoading.loadingMsg = 'Applying pixels…';
+    final Either<ErrorItem, ModelCanvas> either = await batchUpsertPixelsUseCase
+        .call(canvas: _blocCanvas.value, pixels: pixels);
+    either.fold(
+      (ErrorItem err) => _errorBloc.value = err,
+      (ModelCanvas model) => _blocCanvas.value = model,
+    );
+    blocLoading.clearLoading();
+  }
+
+  /// Elimina un lote de píxeles por posición.
+  Future<void> batchRemovePixels(List<ModelVector> positions) async {
+    _errorBloc.value = null;
+    blocLoading.loadingMsg = 'Removing pixels…';
+    final Either<ErrorItem, ModelCanvas> either = await batchRemovePixelsUseCase
+        .call(canvas: _blocCanvas.value, positions: positions);
+    either.fold(
+      (ErrorItem err) => _errorBloc.value = err,
+      (ModelCanvas model) => _blocCanvas.value = model,
+    );
+    blocLoading.clearLoading();
   }
 
   @override
