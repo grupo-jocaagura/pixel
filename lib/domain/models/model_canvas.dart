@@ -6,8 +6,10 @@ import 'model_pixel.dart';
 /// Defines the keys for JSON serialization of [ModelCanvas].
 enum ModelCanvasEnum { id, width, height, pixelSize, pixels }
 
+const String noCanvasId = '';
+const String defaultModelCanvasId = 'default_app_canvas';
 const ModelCanvas defaultModelCanvas = ModelCanvas(
-  id: 'default_app_canvas',
+  id: defaultModelCanvasId,
   width: 40,
   height: 40,
   pixelSize: 1.0,
@@ -27,7 +29,7 @@ class ModelCanvas extends Model {
     required this.height,
     required this.pixelSize,
     required this.pixels,
-    this.id = '',
+    this.id = noCanvasId,
   });
 
   /// Creates a [ModelCanvas] from a JSON map, using [Utils] for safe conversions.
@@ -53,7 +55,7 @@ class ModelCanvas extends Model {
   }
 
   /// Optional canvas identifier for persistence.
-  final String? id;
+  final String id;
 
   /// Number of columns (logical width) of the canvas.
   final int width;
@@ -90,7 +92,7 @@ class ModelCanvas extends Model {
   /// Includes [id] if non-null.
   @override
   Map<String, dynamic> toJson() => <String, dynamic>{
-    if (id != null) ModelCanvasEnum.id.name: id,
+    ModelCanvasEnum.id.name: id,
     ModelCanvasEnum.width.name: width,
     ModelCanvasEnum.height.name: height,
     ModelCanvasEnum.pixelSize.name: pixelSize,
@@ -142,4 +144,12 @@ class ModelCanvas extends Model {
         'size: $width×$height @ $pixelSize, '
         'pixels: ${pixels.length})';
   }
+
+  bool get isNew => id == noCanvasId || id.isEmpty;
+
+  /// Indica que es el canvas inicial de la demo.
+  bool get isDefault => id == defaultModelCanvasId;
+
+  /// Indica que ya existe en persistencia y no es el default.
+  bool get isPersisted => !isNew && !isDefault;
 }

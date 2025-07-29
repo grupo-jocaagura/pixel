@@ -55,11 +55,11 @@ class RepositoryCanvasImpl implements RepositoryCanvas {
 
   @override
   Future<Either<ErrorItem, ModelCanvas>> saveCanvas(ModelCanvas canvas) async {
-    final String? id = canvas.id;
+    final String id = canvas.id;
     if (canvas.width <= 0 || canvas.height <= 0) {
       return Left<ErrorItem, ModelCanvas>(invalidSizeError);
     }
-    if (id == null || id.isEmpty) {
+    if (id.isEmpty) {
       return Left<ErrorItem, ModelCanvas>(defaultSaveError);
     }
     final Either<ErrorItem, Map<String, dynamic>> rawResult = await _gateway

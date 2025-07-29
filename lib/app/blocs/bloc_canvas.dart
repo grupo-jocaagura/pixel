@@ -80,14 +80,28 @@ class BlocCanvas extends BlocModule {
     // await load('some-doc-id');
     _blocCanvas.value = defaultModelCanvas;
     await save();
-    _watchSubscription = watchCanvasUseCase
-        .call(_blocCanvas.value.id.toString())
-        .listen((Either<ErrorItem, ModelCanvas> either) {
-          either.fold(
-            (ErrorItem err) => _errorBloc.value = err,
-            (ModelCanvas model) => _blocCanvas.value = model,
-          );
-        });
+    // Suscribirse inicialmente con el ID por defecto
+    subscribeCanvas(defaultModelCanvasId);
+  }
+
+  /// Suscribe al stream de cambios del canvas para el [id] indicado.
+  /// Si ya había una suscripción previa, la cancela primero.
+  void subscribeCanvas(String id) {
+    unsubscribeCanvas();
+    _watchSubscription = watchCanvasUseCase.call(id).listen((
+      Either<ErrorItem, ModelCanvas> either,
+    ) {
+      either.fold(
+        (ErrorItem err) => _errorBloc.value = err,
+        (ModelCanvas model) => _blocCanvas.value = model,
+      );
+    });
+  }
+
+  /// Cancela la suscripción activa (si existe) y limpia el error relacionado.
+  void unsubscribeCanvas() {
+    _watchSubscription?.cancel();
+    _watchSubscription = null;
   }
 
   // form validation
@@ -127,10 +141,12 @@ class BlocCanvas extends BlocModule {
     _errorBloc.value = null;
     blocLoading.loadingMsg = 'Loading canvas...';
     final Either<ErrorItem, ModelCanvas> either = await loadUseCase.call(id);
-    either.fold(
-      (ErrorItem err) => _errorBloc.value = err,
-      (ModelCanvas model) => _blocCanvas.value = model,
-    );
+    either.fold((ErrorItem err) => _errorBloc.value = err, (ModelCanvas model) {
+      _blocCanvas.value = model;
+      if (model.id.isNotEmpty) {
+        subscribeCanvas(model.id);
+      }
+    });
     blocLoading.clearLoading();
   }
 
