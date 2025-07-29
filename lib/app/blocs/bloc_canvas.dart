@@ -49,6 +49,17 @@ class BlocCanvas extends BlocModule {
   final BatchUpsertPixelsUseCase batchUpsertPixelsUseCase;
   final BatchRemovePixelsUseCase batchRemovePixelsUseCase;
 
+  // Pilas para undo/redo
+  final List<ModelCanvas> _undoStack = <ModelCanvas>[];
+  final List<ModelCanvas> _redoStack = <ModelCanvas>[];
+
+  // Streams para habilitar/deshabilitar botones en la UI
+  final BlocGeneral<bool> _canUndo = BlocGeneral<bool>(false);
+  final BlocGeneral<bool> _canRedo = BlocGeneral<bool>(false);
+
+  Stream<bool> get canUndoStream => _canUndo.stream;
+  Stream<bool> get canRedoStream => _canRedo.stream;
+
   final Debouncer _saveDebouncer = Debouncer(milliseconds: 300);
   // Estado principal: el canvas
   final BlocGeneral<ModelCanvas> _blocCanvas = BlocGeneral<ModelCanvas>(
@@ -56,6 +67,14 @@ class BlocCanvas extends BlocModule {
   );
   Stream<ModelCanvas> get canvasStream => _blocCanvas.stream;
   ModelCanvas get canvas => _blocCanvas.value;
+  void _pushStateForUndo() {
+    _undoStack.add(_blocCanvas.value);
+    _canUndo.value = true;
+
+    // Al hacer nueva acción, invalida el redo
+    _redoStack.clear();
+    _canRedo.value = false;
+  }
 
   // Loading general para todas las operaciones
 
@@ -134,12 +153,49 @@ class BlocCanvas extends BlocModule {
         width != _blocCanvas.value.width &&
         height > 0 &&
         height != _blocCanvas.value.height) {
+      _pushStateForUndo();
       _blocCanvas.value = _blocCanvas.value.copyWith(
         width: width,
         height: height,
       );
       _saveDebouncer(save);
     }
+  }
+
+  /// Deshace la última acción.
+  Future<void> undo() async {
+    if (!_undoStack.isNotEmpty) {
+      return;
+    }
+    // Mover estado actual a redo
+    _redoStack.add(_blocCanvas.value);
+    _canRedo.value = true;
+
+    // Recuperar estado previo
+    final ModelCanvas previous = _undoStack.removeLast();
+    _blocCanvas.value = previous;
+    _canUndo.value = _undoStack.isNotEmpty;
+
+    // Persistir el cambio de canvas
+    await save();
+  }
+
+  /// Rehace la última acción deshecha.
+  Future<void> redo() async {
+    if (!_redoStack.isNotEmpty) {
+      return;
+    }
+    // Mover estado actual a undo
+    _undoStack.add(_blocCanvas.value);
+    _canUndo.value = true;
+
+    // Recuperar estado a rehacer
+    final ModelCanvas next = _redoStack.removeLast();
+    _blocCanvas.value = next;
+    _canRedo.value = _redoStack.isNotEmpty;
+
+    // Persistir el cambio de canvas
+    await save();
   }
 
   /// Carga un canvas existente.
@@ -172,6 +228,7 @@ class BlocCanvas extends BlocModule {
 
   /// Añade o actualiza un píxel usando el UseCase.
   Future<void> addPixel(ModelPixel pixel) async {
+    _pushStateForUndo();
     _errorBloc.value = null;
     blocLoading.loadingMsg = 'Adding pixel...';
     final Either<ErrorItem, ModelCanvas> either = await upsertPixelUseCase.call(
@@ -187,6 +244,7 @@ class BlocCanvas extends BlocModule {
 
   /// Elimina un píxel usando el UseCase.
   Future<void> removePixel(ModelPixel pixel) async {
+    _pushStateForUndo();
     _errorBloc.value = null;
     blocLoading.loadingMsg = 'Removing pixel...';
     final Either<ErrorItem, ModelCanvas> either = await removePixelUseCase.call(
@@ -202,6 +260,7 @@ class BlocCanvas extends BlocModule {
 
   /// Limpia todos los píxeles.
   Future<void> clear() async {
+    _pushStateForUndo();
     _errorBloc.value = null;
     blocLoading.loadingMsg = 'Clearing canvas...';
     final Either<ErrorItem, ModelCanvas> either = await clearCanvasUseCase.call(
