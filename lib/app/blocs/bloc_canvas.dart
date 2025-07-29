@@ -35,8 +35,7 @@ class BlocCanvas extends BlocModule {
 
   String get resolution =>
       '${_blocCanvas.value.width}x${_blocCanvas.value.height} pixels';
-  late final StreamSubscription<Either<ErrorItem, ModelCanvas>>?
-  _watchSubscription;
+  StreamSubscription<Either<ErrorItem, ModelCanvas>>? _watchSubscription;
   // UseCases inyectados
   final CreateCanvasUseCase createUseCase;
   final LoadCanvasUseCase loadUseCase;
@@ -125,8 +124,10 @@ class BlocCanvas extends BlocModule {
 
   /// Cancela la suscripción activa (si existe) y limpia el error relacionado.
   void unsubscribeCanvas() {
-    _watchSubscription?.cancel();
-    _watchSubscription = null;
+    if (_watchSubscription != null) {
+      _watchSubscription?.cancel();
+      _watchSubscription = null;
+    }
   }
 
   // form validation
