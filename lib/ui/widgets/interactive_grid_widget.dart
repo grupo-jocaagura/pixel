@@ -28,6 +28,7 @@ class InteractiveGridWidget extends StatelessWidget {
                   painter: InteractiveGridPainter(
                     modelCanvas: blocCanvas.canvas,
                     gridLineColor: blocCanvas.gridLineColor,
+                    devicePixelRatio: MediaQuery.of(context).devicePixelRatio,
                   ),
                 ),
               );

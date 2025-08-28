@@ -44,9 +44,9 @@ class BlocCanvas extends BlocModule {
   final RemovePixelUseCase removePixelUseCase;
   final ClearCanvasUseCase clearCanvasUseCase;
   final WatchCanvasUseCase watchCanvasUseCase;
-  final BlocLoading blocLoading;
   final BatchUpsertPixelsUseCase batchUpsertPixelsUseCase;
   final BatchRemovePixelsUseCase batchRemovePixelsUseCase;
+  final BlocLoading blocLoading;
 
   // Pilas para undo/redo
   final List<ModelCanvas> _undoStack = <ModelCanvas>[];

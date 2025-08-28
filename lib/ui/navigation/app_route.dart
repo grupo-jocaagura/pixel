@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../views/home_view.dart';
-import '../views/not_found_route_widget.dart';
+import '../views/not_found_route_widget_view.dart';
 import '../views/speak_the_canvas_view.dart';
 
 enum AppRoute { home, notFound, speakTheCanvas }
