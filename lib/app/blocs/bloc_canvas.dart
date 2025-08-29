@@ -305,17 +305,21 @@ class BlocCanvas extends BlocModule {
     final double cellSize = size.width / canvas.width;
     final int x = (details.localPosition.dx / cellSize).floor();
     final int y = (details.localPosition.dy / cellSize).floor();
-    final ModelPixel pixel = ModelPixel.fromCoord(
-      x,
-      y,
-      hexColor: UtilColor.colorToHex(selectedColor),
-    );
 
-    final String key = '${pixel.vector.dx},${pixel.vector.dy}';
-    if (canvas.pixels.containsKey(key)) {
-      removePixel(pixel);
+    final String newHex = UtilColor.colorToHex(selectedColor);
+
+    final ModelPixel newPixel = ModelPixel.fromCoord(x, y, hexColor: newHex);
+
+    final ModelPixel? existing = canvas.pixels[newPixel.keyForCanvas];
+
+    if (existing != null) {
+      if (existing.hexColor.toUpperCase() == newHex.toUpperCase()) {
+        removePixel(existing);
+      } else {
+        addPixel(newPixel);
+      }
     } else {
-      addPixel(pixel);
+      addPixel(newPixel);
     }
   }
 
