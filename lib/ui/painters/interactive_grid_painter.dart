@@ -85,7 +85,7 @@ class InteractiveGridPainter extends CustomPainter {
       canvas.drawRect(rect, fillPaint);
     }
 
-    if (borderPaint.color.a != 0) {
+    if (gridLineColor != null && borderPaint.color.a != 0) {
       for (int i = 0; i <= logicalCols; i += stepX) {
         final double dx = (i * cellSize).floorToDouble() + pixelAlign;
         canvas.drawLine(Offset(dx, 0), Offset(dx, size.height), borderPaint);

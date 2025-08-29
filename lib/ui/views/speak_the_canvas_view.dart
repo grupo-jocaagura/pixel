@@ -30,7 +30,7 @@ class SpeakTheCanvasView extends StatelessWidget {
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.clear),
-            onPressed: blocCanvas.resetCanvas,
+            onPressed: blocCanvas.clear,
           ),
         ],
       ),

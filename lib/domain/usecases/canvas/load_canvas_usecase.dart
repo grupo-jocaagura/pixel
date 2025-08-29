@@ -1,4 +1,4 @@
-import 'package:jocaagura_domain/jocaagura_domain.dart';
+import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 import '../../models/model_canvas.dart';
 import '../../repositories/repository_canvas.dart';

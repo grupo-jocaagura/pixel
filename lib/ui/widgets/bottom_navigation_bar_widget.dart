@@ -53,7 +53,7 @@ class BottomNavigationBarWidget extends StatelessWidget {
                 ElevatedButton.icon(
                   icon: const Icon(Icons.refresh),
                   label: const Text('Resetear'),
-                  onPressed: blocCanvas.resetCanvas,
+                  onPressed: blocCanvas.clear,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                   ),

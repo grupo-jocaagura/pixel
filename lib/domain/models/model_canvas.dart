@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:jocaagura_domain/jocaagura_domain.dart';
+import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 import 'model_pixel.dart';
 

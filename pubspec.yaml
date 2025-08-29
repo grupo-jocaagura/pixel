@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  jocaagura_domain: ^1.21.2
+  jocaaguraarchetype: ^3.0.0
   text_responsive: ^1.2.1
 
 dev_dependencies:

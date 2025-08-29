@@ -1,4 +1,4 @@
-import 'package:jocaagura_domain/jocaagura_domain.dart';
+import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 /// Interfaz que abstrae el acceso a la base de datos de canvas.
 abstract class GatewayCanvas {

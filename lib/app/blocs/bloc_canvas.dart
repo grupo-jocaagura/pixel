@@ -1,52 +1,31 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:jocaagura_domain/jocaagura_domain.dart';
+import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 import '../../domain/models/model_canvas.dart';
 import '../../domain/models/model_pixel.dart';
-import '../../domain/usecases/canvas/batch_remove_pixels_usecase.dart';
-import '../../domain/usecases/canvas/batch_upsert_pixel_usecase.dart';
-import '../../domain/usecases/canvas/clear_canvas_usecase.dart';
-import '../../domain/usecases/canvas/create_canvas_usecase.dart';
-import '../../domain/usecases/canvas/load_canvas_usecase.dart';
-import '../../domain/usecases/canvas/remove_pixel_usecase.dart';
-import '../../domain/usecases/canvas/save_canvas_usecase.dart';
-import '../../domain/usecases/canvas/upsert_pixel_usecase.dart';
-import '../../domain/usecases/canvas/watch_canvas_usecase.dart';
+import '../../domain/usecases/canvas/canvas_usecases.dart';
 import '../../shared/util_color.dart';
-import 'bloc_loading.dart';
 
+/// BLoC encargado de la lógica de un canvas reactivo consumiendo la fachada
+/// [CanvasUsecases]. Mantiene compatibilidad con el flujo actual:
+/// - Estado inicial: [defaultModelCanvas]
+/// - Guardado inmediato para obtener/propagar id
+/// - Suscripción automática si el canvas tiene id
 class BlocCanvas extends BlocModule {
-  BlocCanvas({
-    required this.createUseCase,
-    required this.loadUseCase,
-    required this.saveUseCase,
-    required this.upsertPixelUseCase,
-    required this.removePixelUseCase,
-    required this.clearCanvasUseCase,
-    required this.blocLoading,
-    required this.watchCanvasUseCase,
-    required this.batchRemovePixelsUseCase,
-    required this.batchUpsertPixelsUseCase,
-  }) {
+  BlocCanvas({required this.usecases, required this.blocLoading}) {
     _init();
   }
 
-  String get resolution =>
-      '${_blocCanvas.value.width}x${_blocCanvas.value.height} pixels';
-  StreamSubscription<Either<ErrorItem, ModelCanvas>>? _watchSubscription;
-  // UseCases inyectados
-  final CreateCanvasUseCase createUseCase;
-  final LoadCanvasUseCase loadUseCase;
-  final SaveCanvasUseCase saveUseCase;
-  final UpsertPixelUseCase upsertPixelUseCase;
-  final RemovePixelUseCase removePixelUseCase;
-  final ClearCanvasUseCase clearCanvasUseCase;
-  final WatchCanvasUseCase watchCanvasUseCase;
-  final BatchUpsertPixelsUseCase batchUpsertPixelsUseCase;
-  final BatchRemovePixelsUseCase batchRemovePixelsUseCase;
+  // Fachada de casos de uso
+  final CanvasUsecases usecases;
+
+  // Loading transversal
   final BlocLoading blocLoading;
+
+  // Suscripción al documento observado
+  StreamSubscription<Either<ErrorItem, ModelCanvas>>? _watchSubscription;
 
   // Pilas para undo/redo
   final List<ModelCanvas> _undoStack = <ModelCanvas>[];
@@ -55,37 +34,33 @@ class BlocCanvas extends BlocModule {
   // Streams para habilitar/deshabilitar botones en la UI
   final BlocGeneral<bool> _canUndo = BlocGeneral<bool>(false);
   final BlocGeneral<bool> _canRedo = BlocGeneral<bool>(false);
-
   Stream<bool> get canUndoStream => _canUndo.stream;
   Stream<bool> get canRedoStream => _canRedo.stream;
 
+  // Debounce para persistencias frecuentes (toggle grilla, resolución, etc.)
   final Debouncer _saveDebouncer = Debouncer(milliseconds: 300);
+
   // Estado principal: el canvas
   final BlocGeneral<ModelCanvas> _blocCanvas = BlocGeneral<ModelCanvas>(
     defaultModelCanvas,
   );
   Stream<ModelCanvas> get canvasStream => _blocCanvas.stream;
   ModelCanvas get canvas => _blocCanvas.value;
-  void _pushStateForUndo() {
-    _undoStack.add(_blocCanvas.value);
-    _canUndo.value = true;
-
-    // Al hacer nueva acción, invalida el redo
-    _redoStack.clear();
-    _canRedo.value = false;
-  }
-
-  // Loading general para todas las operaciones
-
-  Stream<String> get loadingStream => blocLoading.loadingMsgStream;
-  bool get isLoading => blocLoading.loadingMsg.isNotEmpty;
 
   // Errores de negocio
   final BlocGeneral<ErrorItem?> _errorBloc = BlocGeneral<ErrorItem?>(null);
   Stream<ErrorItem?> get errorStream => _errorBloc.stream;
   ErrorItem? get lastError => _errorBloc.value;
 
-  // Color y grid line color (sin cambios)
+  // Loading general para todas las operaciones
+  Stream<String> get loadingStream => blocLoading.loadingMsgStream;
+  bool get isLoading => blocLoading.loadingMsg.isNotEmpty;
+
+  // UI helpers
+  String get resolution =>
+      '${_blocCanvas.value.width}x${_blocCanvas.value.height} pixels';
+
+  // Color seleccionado y color de líneas de grilla
   final BlocGeneral<Color> _blocColor = BlocGeneral<Color>(Colors.black);
   Color get selectedColor => _blocColor.value;
   Stream<Color> get selectedColorStream => _blocColor.stream;
@@ -97,22 +72,24 @@ class BlocCanvas extends BlocModule {
   Stream<Color> get gridLineColorStream => _blocGridLineColor.stream;
   bool get isOn => gridLineColor != Colors.transparent;
 
-  // Inicialización (puede cargar un canvas existente si se quiere)
   Future<void> _init() async {
-    // Por ahora no hacemos load automático
-    // Si queremos, descomenta:
-    // await load('some-doc-id');
+    // Estado inicial para pruebas
     _blocCanvas.value = defaultModelCanvas;
+
+    // Guardado inmediato: si el repo/gateway asigna id, lo obtendremos aquí
     await save();
-    // Suscribirse inicialmente con el ID por defecto
-    subscribeCanvas(defaultModelCanvasId);
+
+    // Suscribirse si ya hay id válido
+    final String id = _blocCanvas.value.id;
+    if (id.isNotEmpty) {
+      subscribeCanvas(id);
+    }
   }
 
   /// Suscribe al stream de cambios del canvas para el [id] indicado.
-  /// Si ya había una suscripción previa, la cancela primero.
   void subscribeCanvas(String id) {
     unsubscribeCanvas();
-    _watchSubscription = watchCanvasUseCase.call(id).listen((
+    _watchSubscription = usecases.watchCanvasUseCase.call(id).listen((
       Either<ErrorItem, ModelCanvas> either,
     ) {
       either.fold(
@@ -122,15 +99,16 @@ class BlocCanvas extends BlocModule {
     });
   }
 
-  /// Cancela la suscripción activa (si existe) y limpia el error relacionado.
+  /// Cancela la suscripción activa (si existe).
   void unsubscribeCanvas() {
-    if (_watchSubscription != null) {
-      _watchSubscription?.cancel();
-      _watchSubscription = null;
-    }
+    _watchSubscription?.cancel();
+    _watchSubscription = null;
   }
 
-  // form validation
+  // ---------------------------
+  // Validaciones y utilidades
+  // ---------------------------
+
   String? validateResolutionValue(String value) {
     if (value.isEmpty) {
       return 'La resolución no puede estar vacía';
@@ -149,6 +127,17 @@ class BlocCanvas extends BlocModule {
     }
   }
 
+  void _pushStateForUndo() {
+    _undoStack.add(_blocCanvas.value);
+    _canUndo.value = true;
+    _redoStack.clear();
+    _canRedo.value = false;
+  }
+
+  // ---------------------------
+  // Acciones de edición
+  // ---------------------------
+
   void updateResolution(int width, int height) {
     if (width > 0 &&
         width != _blocCanvas.value.width &&
@@ -163,79 +152,75 @@ class BlocCanvas extends BlocModule {
     }
   }
 
-  /// Deshace la última acción.
   Future<void> undo() async {
-    if (!_undoStack.isNotEmpty) {
+    if (_undoStack.isEmpty) {
       return;
     }
-    // Mover estado actual a redo
     _redoStack.add(_blocCanvas.value);
     _canRedo.value = true;
 
-    // Recuperar estado previo
     final ModelCanvas previous = _undoStack.removeLast();
     _blocCanvas.value = previous;
     _canUndo.value = _undoStack.isNotEmpty;
 
-    // Persistir el cambio de canvas
     await save();
   }
 
-  /// Rehace la última acción deshecha.
   Future<void> redo() async {
-    if (!_redoStack.isNotEmpty) {
+    if (_redoStack.isEmpty) {
       return;
     }
-    // Mover estado actual a undo
     _undoStack.add(_blocCanvas.value);
     _canUndo.value = true;
 
-    // Recuperar estado a rehacer
     final ModelCanvas next = _redoStack.removeLast();
     _blocCanvas.value = next;
     _canRedo.value = _redoStack.isNotEmpty;
 
-    // Persistir el cambio de canvas
     await save();
   }
 
-  /// Carga un canvas existente.
+  /// Carga un canvas existente y actualiza suscripción.
   Future<void> load(String id) async {
     _errorBloc.value = null;
     blocLoading.loadingMsg = 'Loading canvas...';
-    final Either<ErrorItem, ModelCanvas> either = await loadUseCase.call(id);
+    final Either<ErrorItem, ModelCanvas> either = await usecases.loadUseCase
+        .call(id);
     either.fold((ErrorItem err) => _errorBloc.value = err, (ModelCanvas model) {
       _blocCanvas.value = model;
-      if (model.id.isNotEmpty) {
-        subscribeCanvas(model.id);
+      final String newId = model.id;
+      if (newId.isNotEmpty) {
+        subscribeCanvas(newId);
       }
     });
     blocLoading.clearLoading();
   }
 
-  /// Guarda/actualiza el canvas completo (por ejemplo tras cambiar resolución).
+  /// Guarda/actualiza el canvas completo.
   Future<void> save() async {
     _errorBloc.value = null;
     blocLoading.loadingMsg = 'Saving canvas...';
-    final Either<ErrorItem, ModelCanvas> either = await saveUseCase.call(
-      _blocCanvas.value,
-    );
-    either.fold(
-      (ErrorItem err) => _errorBloc.value = err,
-      (ModelCanvas model) => _blocCanvas.value = model,
-    );
+    final Either<ErrorItem, ModelCanvas> either = await usecases.saveUseCase
+        .call(_blocCanvas.value);
+    either.fold((ErrorItem err) => _errorBloc.value = err, (ModelCanvas model) {
+      _blocCanvas.value = model;
+      // Si el save asignó id, aseguremos la suscripción
+      final String id = model.id;
+      if (id.isNotEmpty) {
+        subscribeCanvas(id);
+      }
+    });
     blocLoading.clearLoading();
   }
 
-  /// Añade o actualiza un píxel usando el UseCase.
+  /// Añade o actualiza un píxel.
   Future<void> addPixel(ModelPixel pixel) async {
     _pushStateForUndo();
     _errorBloc.value = null;
     blocLoading.loadingMsg = 'Adding pixel...';
-    final Either<ErrorItem, ModelCanvas> either = await upsertPixelUseCase.call(
-      canvas: _blocCanvas.value,
-      pixel: pixel,
-    );
+    final Either<ErrorItem, ModelCanvas> either = await usecases
+        .upsertPixelUseCase
+        .call(canvas: _blocCanvas.value, pixel: pixel);
     either.fold(
       (ErrorItem err) => _errorBloc.value = err,
       (ModelCanvas model) => _blocCanvas.value = model,
@@ -243,15 +228,14 @@ class BlocCanvas extends BlocModule {
     blocLoading.clearLoading();
   }
 
-  /// Elimina un píxel usando el UseCase.
+  /// Elimina un píxel.
   Future<void> removePixel(ModelPixel pixel) async {
     _pushStateForUndo();
     _errorBloc.value = null;
     blocLoading.loadingMsg = 'Removing pixel...';
-    final Either<ErrorItem, ModelCanvas> either = await removePixelUseCase.call(
-      canvas: _blocCanvas.value,
-      position: pixel.vector,
-    );
+    final Either<ErrorItem, ModelCanvas> either = await usecases
+        .removePixelUseCase
+        .call(canvas: _blocCanvas.value, position: pixel.vector);
     either.fold(
       (ErrorItem err) => _errorBloc.value = err,
       (ModelCanvas model) => _blocCanvas.value = model,
@@ -259,14 +243,14 @@ class BlocCanvas extends BlocModule {
     blocLoading.clearLoading();
   }
 
-  /// Limpia todos los píxeles.
+  /// Limpia todos los píxeles del canvas.
   Future<void> clear() async {
     _pushStateForUndo();
     _errorBloc.value = null;
     blocLoading.loadingMsg = 'Clearing canvas...';
-    final Either<ErrorItem, ModelCanvas> either = await clearCanvasUseCase.call(
-      _blocCanvas.value,
-    );
+    final Either<ErrorItem, ModelCanvas> either = await usecases
+        .clearCanvasUseCase
+        .call(_blocCanvas.value);
     either.fold(
       (ErrorItem err) => _errorBloc.value = err,
       (ModelCanvas model) => _blocCanvas.value = model,
@@ -274,8 +258,31 @@ class BlocCanvas extends BlocModule {
     blocLoading.clearLoading();
   }
 
-  void resetCanvas() {
-    clear();
+  /// Operaciones en lote
+  Future<void> batchAddPixels(List<ModelPixel> pixels) async {
+    _errorBloc.value = null;
+    blocLoading.loadingMsg = 'Applying pixels…';
+    final Either<ErrorItem, ModelCanvas> either = await usecases
+        .batchUpsertPixelsUseCase
+        .call(canvas: _blocCanvas.value, pixels: pixels);
+    either.fold(
+      (ErrorItem err) => _errorBloc.value = err,
+      (ModelCanvas model) => _blocCanvas.value = model,
+    );
+    blocLoading.clearLoading();
+  }
+
+  Future<void> batchRemovePixels(List<ModelVector> positions) async {
+    _errorBloc.value = null;
+    blocLoading.loadingMsg = 'Removing pixels…';
+    final Either<ErrorItem, ModelCanvas> either = await usecases
+        .batchRemovePixelsUseCase
+        .call(canvas: _blocCanvas.value, positions: positions);
+    either.fold(
+      (ErrorItem err) => _errorBloc.value = err,
+      (ModelCanvas model) => _blocCanvas.value = model,
+    );
+    blocLoading.clearLoading();
   }
 
   /// Alterna el color activo.
@@ -285,7 +292,7 @@ class BlocCanvas extends BlocModule {
     }
   }
 
-  /// Alterna la visibilidad de las grillas.
+  /// Alterna la visibilidad de las líneas de grilla (se persiste con debounce).
   void toggleGridLineColor() {
     _blocGridLineColor.value = isOn
         ? Colors.transparent
@@ -293,7 +300,7 @@ class BlocCanvas extends BlocModule {
     _saveDebouncer(save);
   }
 
-  /// Manejo de taps en el lienzo (no persiste, solo local).
+  /// Manejo de taps en el lienzo (invoca upsert/remove según exista la clave).
   void handleTapDown(TapDownDetails details, Size size) {
     final double cellSize = size.width / canvas.width;
     final int x = (details.localPosition.dx / cellSize).floor();
@@ -303,46 +310,24 @@ class BlocCanvas extends BlocModule {
       y,
       hexColor: UtilColor.colorToHex(selectedColor),
     );
-    if (canvas.pixels.containsKey(pixel.keyForCanvas)) {
+
+    final String key = '${pixel.vector.dx},${pixel.vector.dy}';
+    if (canvas.pixels.containsKey(key)) {
       removePixel(pixel);
     } else {
       addPixel(pixel);
     }
   }
 
-  /// Aplica un lote de píxeles (e.g. flood fill).
-  Future<void> batchAddPixels(List<ModelPixel> pixels) async {
-    _errorBloc.value = null;
-    blocLoading.loadingMsg = 'Applying pixels…';
-    final Either<ErrorItem, ModelCanvas> either = await batchUpsertPixelsUseCase
-        .call(canvas: _blocCanvas.value, pixels: pixels);
-    either.fold(
-      (ErrorItem err) => _errorBloc.value = err,
-      (ModelCanvas model) => _blocCanvas.value = model,
-    );
-    blocLoading.clearLoading();
-  }
-
-  /// Elimina un lote de píxeles por posición.
-  Future<void> batchRemovePixels(List<ModelVector> positions) async {
-    _errorBloc.value = null;
-    blocLoading.loadingMsg = 'Removing pixels…';
-    final Either<ErrorItem, ModelCanvas> either = await batchRemovePixelsUseCase
-        .call(canvas: _blocCanvas.value, positions: positions);
-    either.fold(
-      (ErrorItem err) => _errorBloc.value = err,
-      (ModelCanvas model) => _blocCanvas.value = model,
-    );
-    blocLoading.clearLoading();
-  }
-
   @override
   void dispose() {
+    _watchSubscription?.cancel();
     _blocCanvas.dispose();
     _blocColor.dispose();
     _blocGridLineColor.dispose();
     _errorBloc.dispose();
     blocLoading.dispose();
-    _watchSubscription?.cancel();
+    _canUndo.dispose();
+    _canRedo.dispose();
   }
 }
