@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 import '../../app/app_state_manager.dart';
 import '../../app/blocs/bloc_canvas.dart';
@@ -8,6 +9,11 @@ import '../widgets/interactive_grid_widget.dart';
 
 class SpeakTheCanvasView extends StatelessWidget {
   const SpeakTheCanvasView({super.key});
+
+  static const PageModel pageModel = PageModel(
+    name: 'SpeakTheCanvas',
+    segments: ['speak-the-canvas'],
+  );
 
   @override
   Widget build(BuildContext context) {

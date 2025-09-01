@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 import 'package:text_responsive/text_responsive.dart';
 
 import '../navigation/app_route.dart';
 
-class HomeView extends StatelessWidget {
-  const HomeView({super.key});
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+
+  static const PageModel pageModel = PageModel(
+    name: 'home',
+    segments: <String>['home'],
+  );
 
   @override
   Widget build(BuildContext context) {

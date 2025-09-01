@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../views/home_view.dart';
-import '../views/not_found_route_widget_view.dart';
-import '../views/speak_the_canvas_view.dart';
+import '../pages/home_page.dart';
+import '../pages/not_found_route_widget_page.dart';
+import '../pages/speak_the_canvas_page.dart';
 
 enum AppRoute { home, notFound, speakTheCanvas }
 
@@ -23,12 +23,12 @@ extension AppRouteExtension on AppRoute {
   WidgetBuilder get builder {
     switch (this) {
       case AppRoute.home:
-        return (BuildContext _) => const HomeView();
+        return (BuildContext _) => const HomePage();
       case AppRoute.speakTheCanvas:
         return (BuildContext _) =>
             const SpeakTheCanvasView(); // Placeholder for actual view
       case AppRoute.notFound:
-        return (BuildContext _) => const NotFoundRouteWidget();
+        return (BuildContext _) => const NotFoundRoutePage();
     }
   }
 }

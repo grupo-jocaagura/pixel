@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 import 'package:text_responsive/text_responsive.dart';
 
-class NotFoundRouteWidget extends StatelessWidget {
-  const NotFoundRouteWidget({super.key});
+class NotFoundRoutePage extends StatelessWidget {
+  const NotFoundRoutePage({super.key});
+  static const PageModel pageModel = PageModel(
+    name: 'NotFoundRoutePage',
+    segments: <String>['not-found'],
+  );
 
   @override
   Widget build(BuildContext context) {
