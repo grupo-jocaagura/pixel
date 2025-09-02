@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 import 'package:text_responsive/text_responsive.dart';
 
-import '../navigation/app_route.dart';
+import 'speak_the_canvas_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -25,7 +25,7 @@ class HomePage extends StatelessWidget {
             leading: const Icon(Icons.brush),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              Navigator.pushNamed(context, AppRoute.speakTheCanvas.path);
+              context.appManager.push(SpeakTheCanvasPage.pageModel.name);
             },
           ),
         ],

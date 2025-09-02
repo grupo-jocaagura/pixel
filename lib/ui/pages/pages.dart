@@ -1,0 +1,38 @@
+import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
+
+import 'home_page.dart';
+import 'not_found_route_page.dart';
+import 'speak_the_canvas_page.dart';
+import 'splash_screen_page.dart';
+
+const List<PageModel> pages = <PageModel>[
+  HomePage.pageModel,
+  SplashScreenPage.pageModel,
+  SpeakTheCanvasPage.pageModel,
+  NotFoundRoutePage.pageModel,
+];
+
+final NavStackModel navStackModel = NavStackModel(pages);
+
+final PageRegistry pageRegistry = PageRegistry.fromDefs(
+  <PageDef>[
+    PageDef(
+      model: HomePage.pageModel,
+      builder: (_, PageModel page) => const HomePage(),
+    ),
+    PageDef(
+      model: SplashScreenPage.pageModel,
+      builder: (_, PageModel page) => const SplashScreenPage(),
+    ),
+    PageDef(
+      model: NotFoundRoutePage.pageModel,
+      builder: (_, PageModel page) => const NotFoundRoutePage(),
+    ),
+    PageDef(
+      model: SpeakTheCanvasPage.pageModel,
+      builder: (_, PageModel page) => const SpeakTheCanvasPage(),
+    ),
+  ],
+  notFoundBuilder: (_, PageModel page) => const NotFoundRoutePage(),
+  defaultPage: SplashScreenPage.pageModel,
+);

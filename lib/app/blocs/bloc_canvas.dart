@@ -18,6 +18,7 @@ class BlocCanvas extends BlocModule {
     _init();
   }
 
+  static const String name = 'blocCanvas';
   // Fachada de casos de uso
   final CanvasUsecases usecases;
 

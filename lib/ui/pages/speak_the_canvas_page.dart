@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
-import '../../app/app_state_manager.dart';
 import '../../app/blocs/bloc_canvas.dart';
+import '../../pixel_config.dart';
 import '../ui_constants.dart';
 import '../widgets/bottom_navigation_bar_widget.dart';
 import '../widgets/interactive_grid_widget.dart';
 
-class SpeakTheCanvasView extends StatelessWidget {
-  const SpeakTheCanvasView({super.key});
+class SpeakTheCanvasPage extends StatelessWidget {
+  const SpeakTheCanvasPage({super.key});
 
   static const PageModel pageModel = PageModel(
     name: 'SpeakTheCanvas',
-    segments: ['speak-the-canvas'],
+    segments: <String>['speak-the-canvas'],
   );
 
   @override
   Widget build(BuildContext context) {
-    final BlocCanvas blocCanvas = AppStateManager.of(context).blocCanvas;
+    final BlocCanvas blocCanvas = pixelConfig.blocCanvas;
     final String screenResolution =
         '${MediaQuery.of(context).size.width}x${MediaQuery.of(context).size.height}';
     return Scaffold(
