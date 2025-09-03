@@ -38,23 +38,20 @@ class PixelConfig {
   }
 
   final BlocLoading blocLoading = BlocLoading();
-  void _init() {
+  void _init() {}
+
+  AppConfig dev() {
     final GatewayCanvas gatewayCanvas = GatewayCanvasImpl(
       FakeServiceWsDatabase(),
     );
     final RepositoryCanvas repositoryCanvas = RepositoryCanvasImpl(
       gatewayCanvas,
     );
-    _blocCanvas = BlocCanvas(
+    final BlocCanvas blocCanvas = BlocCanvas(
       usecases: CanvasUsecases.fromRepo(repositoryCanvas),
       blocLoading: blocLoading,
     );
-  }
 
-  late BlocCanvas _blocCanvas;
-  BlocCanvas get blocCanvas => _blocCanvas;
-
-  AppConfig dev() {
     return AppConfig(
       blocLoading: blocLoading,
       blocTheme: BlocTheme(

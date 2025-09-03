@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 import '../../app/blocs/bloc_canvas.dart';
-import '../../pixel_config.dart';
 import '../ui_constants.dart';
 import '../widgets/bottom_navigation_bar_widget.dart';
 import '../widgets/interactive_grid_widget.dart';
@@ -17,10 +16,12 @@ class SpeakTheCanvasPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final BlocCanvas blocCanvas = pixelConfig.blocCanvas;
+    final BlocCanvas blocCanvas = context.appManager
+        .requireModuleByKey<BlocCanvas>(BlocCanvas.name);
     final String screenResolution =
         '${MediaQuery.of(context).size.width}x${MediaQuery.of(context).size.height}';
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         toolbarHeight: UIConstants.toolAppBarHeight,
         title: Row(

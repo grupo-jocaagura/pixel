@@ -25,7 +25,7 @@ class HomePage extends StatelessWidget {
             leading: const Icon(Icons.brush),
             trailing: const Icon(Icons.chevron_right),
             onTap: () {
-              context.appManager.push(SpeakTheCanvasPage.pageModel.name);
+              context.appManager.pushModel(SpeakTheCanvasPage.pageModel);
             },
           ),
         ],
