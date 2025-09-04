@@ -5,12 +5,7 @@ import 'not_found_route_page.dart';
 import 'speak_the_canvas_page.dart';
 import 'splash_screen_page.dart';
 
-const List<PageModel> pages = <PageModel>[
-  HomePage.pageModel,
-  SplashScreenPage.pageModel,
-  SpeakTheCanvasPage.pageModel,
-  NotFoundRoutePage.pageModel,
-];
+const List<PageModel> pages = <PageModel>[SplashScreenPage.pageModel];
 
 final NavStackModel navStackModel = NavStackModel(pages);
 

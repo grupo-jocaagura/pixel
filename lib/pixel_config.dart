@@ -17,7 +17,6 @@ final List<OnboardingStep> onboardingSteps = <OnboardingStep>[
     autoAdvanceAfter: const Duration(seconds: 5),
     description: 'Probando funcion del onboarding, simulando carga del canvas',
     onEnter: () async {
-      print('Hola Mundo');
       return Right<ErrorItem, Unit>(Unit.value);
     },
   ),
@@ -26,7 +25,6 @@ final List<OnboardingStep> onboardingSteps = <OnboardingStep>[
     autoAdvanceAfter: const Duration(seconds: 3),
     description: 'Probando funcion del onboarding, simulando carga del canvas',
     onEnter: () async {
-      print('Hola Mundo');
       return Right<ErrorItem, Unit>(Unit.value);
     },
   ),
