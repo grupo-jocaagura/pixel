@@ -3,6 +3,7 @@ import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 import 'package:text_responsive/text_responsive.dart';
 
 import 'speak_the_canvas_page.dart';
+import 'speak_the_line_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -16,20 +17,44 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ListView(
-        children: <Widget>[
-          ListTile(
-            title: const InlineTextWidget('Taller 1'),
-            subtitle: const ParagraphTextWidget(
-              'Explicación del canvas y que es un pixel',
-            ),
-            leading: const Icon(Icons.brush),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              context.appManager.pushModel(SpeakTheCanvasPage.pageModel);
-            },
+        children: const <Widget>[
+          MenuTileWidget(
+            label: 'Taller 1',
+            description: 'Explicación del canvas y que es un pixel',
+            page: SpeakTheCanvasPage.pageModel,
+          ),
+          MenuTileWidget(
+            label: 'Taller 2',
+            description: 'Explicación de la linea',
+            page: SpeakTheLinePage.pageModel,
           ),
         ],
       ),
+    );
+  }
+}
+
+class MenuTileWidget extends StatelessWidget {
+  const MenuTileWidget({
+    required this.label,
+    required this.description,
+    required this.page,
+    super.key,
+  });
+  final String label;
+  final String description;
+  final PageModel page;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: InlineTextWidget(label),
+      subtitle: ParagraphTextWidget(description),
+      leading: const Icon(Icons.brush),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {
+        context.appManager.pushModel(page);
+      },
     );
   }
 }

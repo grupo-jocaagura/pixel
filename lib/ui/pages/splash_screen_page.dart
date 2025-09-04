@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
+import '../../app/pixel_config.dart';
 import '../../main.dart';
-import '../../pixel_config.dart';
 import 'home_page.dart';
 
 /// Splash screen that reacts to the onboarding progress.

@@ -7,6 +7,7 @@ import '../../domain/models/model_canvas.dart';
 import '../../domain/models/model_pixel.dart';
 import '../../domain/usecases/canvas/canvas_usecases.dart';
 import '../../shared/util_color.dart';
+import '../utils/util_pixel_raster.dart';
 
 /// BLoC encargado de la lógica de un canvas reactivo consumiendo la fachada
 /// [CanvasUsecases]. Mantiene compatibilidad con el flujo actual:
@@ -72,6 +73,8 @@ class BlocCanvas extends BlocModule {
   Color get gridLineColor => _blocGridLineColor.value;
   Stream<Color> get gridLineColorStream => _blocGridLineColor.stream;
   bool get isOn => gridLineColor != Colors.transparent;
+
+  String get selectedHex => UtilColor.colorToHex(selectedColor);
 
   Future<void> _init() async {
     // Estado inicial para pruebas
@@ -322,6 +325,28 @@ class BlocCanvas extends BlocModule {
     } else {
       addPixel(newPixel);
     }
+  }
+
+  /// Funciones de dibujo
+  /// Adds a line to the pixel-art canvas by rasterizing origin→destiny.
+  void drawLine(
+    ModelPixel origin,
+    ModelPixel destiny, {
+    String? hexColor,
+    bool overwrite = true,
+  }) {
+    _pushStateForUndo();
+    final String? normalized = (hexColor == null)
+        ? null
+        : UtilColor.normalizeHex(hexColor);
+    _blocCanvas.value = UtilPixelRaster.drawLine(
+      canvas: canvas,
+      origin: origin,
+      destiny: destiny,
+      hexColorOverride: normalized,
+      overwrite: overwrite,
+    );
+    _saveDebouncer(save);
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 import '../../app/blocs/bloc_canvas.dart';
 import '../ui_constants.dart';
+import '../widgets/back_button_widget.dart';
 import '../widgets/bottom_navigation_bar_widget.dart';
 import '../widgets/interactive_grid_widget.dart';
 
@@ -34,6 +35,7 @@ class SpeakTheCanvasPage extends StatelessWidget {
             Text('Pixel Canvas con Map - $screenResolution'),
           ],
         ),
+        leading: const BackButtonWidget(),
         actions: <Widget>[
           IconButton(
             icon: const Icon(Icons.clear),

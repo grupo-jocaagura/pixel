@@ -32,6 +32,10 @@ class UtilColor {
 
   static Color gridLineColor = Colors.grey.shade300;
 
+  static Color fromHex(String hex) {
+    return hexToColor(hex);
+  }
+
   /// Parses a hexadecimal [hex] string and returns a [Color].
   ///
   /// Accepts `#RRGGBB` (assumes alpha = `FF`) or `#AARRGGBB`.

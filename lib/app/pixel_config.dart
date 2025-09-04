@@ -1,12 +1,12 @@
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
-import 'app/blocs/bloc_canvas.dart';
-import 'data/gateways/gateway_canvas_impl.dart';
-import 'data/repositories/repository_canvas_impl.dart';
-import 'domain/gateways/gateway_canvas.dart';
-import 'domain/repositories/repository_canvas.dart';
-import 'domain/usecases/canvas/canvas_usecases.dart';
-import 'ui/pages/pages.dart';
+import '../data/gateways/gateway_canvas_impl.dart';
+import '../data/repositories/repository_canvas_impl.dart';
+import '../domain/gateways/gateway_canvas.dart';
+import '../domain/repositories/repository_canvas.dart';
+import '../domain/usecases/canvas/canvas_usecases.dart';
+import '../ui/pages/pages.dart';
+import 'blocs/bloc_canvas.dart';
 
 enum AppMode { dev, qa, prod }
 

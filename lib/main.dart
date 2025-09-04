@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
-import 'pixel_config.dart';
+import 'app/pixel_config.dart';
 import 'ui/pages/pages.dart';
 import 'ui/pages/splash_screen_page.dart';
 
