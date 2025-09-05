@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
-import 'package:text_responsive/text_responsive.dart';
 
 import '../../app/blocs/bloc_canvas.dart';
 import '../../app/blocs/bloc_canvas_preview.dart';
@@ -12,6 +11,7 @@ import '../widgets/back_button_widget.dart';
 import '../widgets/forms/coord_editor_widget.dart';
 import '../widgets/interactive_grid_line_widget.dart';
 import '../widgets/pixel_icon_button.dart';
+import '../widgets/preview_controls_widget.dart';
 
 class SpeakTheCirclePage extends StatelessWidget {
   const SpeakTheCirclePage({super.key});
@@ -56,14 +56,6 @@ class SpeakTheCirclePage extends StatelessWidget {
         builder: (_, AsyncSnapshot<StatePreview> snap) {
           final StatePreview s = snap.data ?? previewBloc.state;
 
-          // radio solo como info: distancia centro→destino
-          final int radius = (s.origin != null && s.destiny != null)
-              ? sqrt(
-                  pow(s.destiny!.x - s.origin!.x, 2) +
-                      pow(s.destiny!.y - s.origin!.y, 2),
-                ).round()
-              : 0;
-
           return Column(
             children: <Widget>[
               Expanded(
@@ -82,180 +74,42 @@ class SpeakTheCirclePage extends StatelessWidget {
                   ),
                 ),
               ),
-              _BottomControlsCircle(
+              PreviewControlsWidget(
                 canvasBloc: canvasBloc,
                 previewBloc: previewBloc,
                 state: s,
-                radius: radius,
+                applyLabel: 'Dibujar círculo',
+                applyIcon: Icons.circle_outlined,
+                coordinatesEditor: Wrap(
+                  spacing: 16,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: <Widget>[
+                    CoordEditorWidget(
+                      label: 'Centro',
+                      value: s.origin,
+                      setValue: (Point<int>? p) => previewBloc.setOrigin(
+                        p,
+                        canvasBloc.canvas,
+                        canvasBloc.selectedHex,
+                      ),
+                      blocCanvas: canvasBloc,
+                    ),
+                    CoordEditorWidget(
+                      label: 'Borde',
+                      value: s.destiny,
+                      setValue: (Point<int>? p) => previewBloc.setDestiny(
+                        p,
+                        canvasBloc.canvas,
+                        canvasBloc.selectedHex,
+                      ),
+                      blocCanvas: canvasBloc,
+                    ),
+                  ],
+                ),
               ),
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-class _BottomControlsCircle extends StatelessWidget {
-  const _BottomControlsCircle({
-    required this.canvasBloc,
-    required this.previewBloc,
-    required this.state,
-    required this.radius,
-  });
-
-  final BlocCanvas canvasBloc;
-  final BlocCanvasPreview previewBloc;
-  final StatePreview state;
-  final int radius;
-
-  String? _validateStroke(String? v) {
-    if (v == null || v.isEmpty) {
-      return 'requerido';
-    }
-    final int? n = int.tryParse(v);
-    if (n == null || n < 1) {
-      return 'mínimo 1';
-    }
-    return null;
-  }
-
-  String? _validateRadius(String? v) {
-    if (v == null || v.isEmpty) {
-      return 'requerido';
-    }
-    final int? n = int.tryParse(v);
-    if (n == null || n < 0) {
-      return '≥ 0';
-    }
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Nota: si el usuario escribe un radio, sintetizamos `destiny` a la derecha
-    void setRadius(int r) {
-      if (state.origin == null) {
-        return;
-      }
-      final int x = (state.origin!.x + r).clamp(0, canvasBloc.canvas.width - 1);
-      final int y = state.origin!.y;
-      previewBloc.setDestiny(
-        Point<int>(x, y),
-        canvasBloc.canvas,
-        canvasBloc.selectedHex,
-      );
-    }
-
-    return Material(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Wrap(
-          spacing: 16,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          runSpacing: 8,
-          children: <Widget>[
-            CoordEditorWidget(
-              label: 'Centro',
-              value: state.origin,
-              setValue: (Point<int>? p) => previewBloc.setOrigin(
-                p,
-                canvasBloc.canvas,
-                canvasBloc.selectedHex,
-              ),
-              blocCanvas: canvasBloc,
-            ),
-            CoordEditorWidget(
-              label: 'Borde',
-              value: state.destiny,
-              setValue: (Point<int>? p) => previewBloc.setDestiny(
-                p,
-                canvasBloc.canvas,
-                canvasBloc.selectedHex,
-              ),
-              blocCanvas: canvasBloc,
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                const InlineTextWidget('Relleno'),
-                Switch(
-                  value: state.fill,
-                  onChanged: (bool v) => previewBloc.setFill(
-                    v,
-                    canvasBloc.canvas,
-                    canvasBloc.selectedHex,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(
-              width: 120,
-              child: CustomAutoCompleteInputWidget(
-                label: 'Stroke',
-                initialData: state.stroke.toString(),
-                placeholder: '≥ 1',
-                textInputType: TextInputType.number,
-                suggestList: const <String>['1', '2', '3', '4', '5', '8'],
-                onChangedDebounce: const Duration(milliseconds: 120),
-                onEditingValidateFunction: _validateStroke,
-                onChanged: (String v) {
-                  final int? n = int.tryParse(v);
-                  if (n != null && n >= 1) {
-                    previewBloc.setStroke(
-                      n,
-                      canvasBloc.canvas,
-                      canvasBloc.selectedHex,
-                    );
-                  }
-                },
-                onFieldSubmitted: (String v) {
-                  final int? n = int.tryParse(v);
-                  if (n != null && n >= 1) {
-                    previewBloc.setStroke(
-                      n,
-                      canvasBloc.canvas,
-                      canvasBloc.selectedHex,
-                    );
-                  }
-                },
-              ),
-            ),
-            // Radio editable (opcional)
-            SizedBox(
-              width: 120,
-              child: CustomAutoCompleteInputWidget(
-                label: 'Radio',
-                initialData: radius.toString(),
-                placeholder: '≥ 0',
-                textInputType: TextInputType.number,
-                suggestList: const <String>['3', '5', '8', '12', '16'],
-                onChangedDebounce: const Duration(milliseconds: 120),
-                onEditingValidateFunction: _validateRadius,
-                onChanged: (String v) {
-                  final int? n = int.tryParse(v);
-                  if (n != null && n >= 0) {
-                    setRadius(n);
-                  }
-                },
-                onFieldSubmitted: (String v) {
-                  final int? n = int.tryParse(v);
-                  if (n != null && n >= 0) {
-                    setRadius(n);
-                  }
-                },
-              ),
-            ),
-            ElevatedButton.icon(
-              onPressed: state.hasSelection
-                  ? () => previewBloc.apply(canvasBloc)
-                  : null,
-              icon: const Icon(Icons.circle_outlined),
-              label: const Text('Dibujar círculo'),
-            ),
-          ],
-        ),
       ),
     );
   }

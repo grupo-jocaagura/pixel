@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
-import 'package:text_responsive/text_responsive.dart';
 
 import '../../app/blocs/bloc_canvas.dart';
 import '../../app/blocs/bloc_canvas_preview.dart';
@@ -12,6 +11,7 @@ import '../widgets/back_button_widget.dart';
 import '../widgets/forms/coord_editor_widget.dart';
 import '../widgets/interactive_grid_line_widget.dart';
 import '../widgets/pixel_icon_button.dart';
+import '../widgets/preview_controls_widget.dart';
 
 class SpeakTheOvalPage extends StatelessWidget {
   const SpeakTheOvalPage({super.key});
@@ -54,7 +54,7 @@ class SpeakTheOvalPage extends StatelessWidget {
         stream: previewBloc.stateStream,
         initialData: previewBloc.state,
         builder: (_, __) {
-          final StatePreview s = previewBloc.state;
+          final StatePreview state = previewBloc.state;
 
           return Column(
             children: <Widget>[
@@ -62,11 +62,11 @@ class SpeakTheOvalPage extends StatelessWidget {
                 child: InteractiveGridLineWidget(
                   fit: GridFit.width,
                   blocCanvas: canvasBloc,
-                  showCoordinates: s.showCoords,
+                  showCoordinates: state.showCoords,
                   coordinateColor: canvasBloc.selectedColor,
-                  origin: s.origin,
-                  destiny: s.destiny,
-                  previewPixels: s.previewPixels,
+                  origin: state.origin,
+                  destiny: state.destiny,
+                  previewPixels: state.previewPixels,
                   onCellTap: (Point<int> cell) => previewBloc.tapCell(
                     cell,
                     canvasBloc.canvas,
@@ -74,153 +74,42 @@ class SpeakTheOvalPage extends StatelessWidget {
                   ),
                 ),
               ),
-              _BottomControlsOval(
+              PreviewControlsWidget(
                 canvasBloc: canvasBloc,
                 previewBloc: previewBloc,
-                state: s,
+                state: state,
+                applyLabel: 'Dibujar óvalo',
+                applyIcon: Icons.egg_alt_outlined,
+                coordinatesEditor: Wrap(
+                  spacing: 16,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: <Widget>[
+                    CoordEditorWidget(
+                      label: 'P1',
+                      value: state.origin,
+                      setValue: (Point<int>? point) => previewBloc.setOrigin(
+                        point,
+                        canvasBloc.canvas,
+                        canvasBloc.selectedHex,
+                      ),
+                      blocCanvas: canvasBloc,
+                    ),
+                    CoordEditorWidget(
+                      label: 'P2',
+                      value: state.destiny,
+                      setValue: (Point<int>? point) => previewBloc.setDestiny(
+                        point,
+                        canvasBloc.canvas,
+                        canvasBloc.selectedHex,
+                      ),
+                      blocCanvas: canvasBloc,
+                    ),
+                  ],
+                ),
               ),
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-class _BottomControlsOval extends StatelessWidget {
-  const _BottomControlsOval({
-    required this.canvasBloc,
-    required this.previewBloc,
-    required this.state,
-  });
-
-  final BlocCanvas canvasBloc;
-  final BlocCanvasPreview previewBloc;
-  final StatePreview state;
-
-  String? _validateStroke(String? v) {
-    if (v == null || v.isEmpty) {
-      return 'requerido';
-    }
-    final int? n = int.tryParse(v);
-    if (n == null || n < 1) {
-      return 'mínimo 1';
-    }
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    String pendingRes = canvasBloc.canvas.width.toString();
-
-    return Material(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Wrap(
-          spacing: 16,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          runSpacing: 8,
-          children: <Widget>[
-            CoordEditorWidget(
-              label: 'P1',
-              value: state.origin,
-              setValue: (Point<int>? p) => previewBloc.setOrigin(
-                p,
-                canvasBloc.canvas,
-                canvasBloc.selectedHex,
-              ),
-              blocCanvas: canvasBloc,
-            ),
-            CoordEditorWidget(
-              label: 'P2',
-              value: state.destiny,
-              setValue: (Point<int>? p) => previewBloc.setDestiny(
-                p,
-                canvasBloc.canvas,
-                canvasBloc.selectedHex,
-              ),
-              blocCanvas: canvasBloc,
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                const InlineTextWidget('Relleno'),
-                Switch(
-                  value: state.fill,
-                  onChanged: (bool v) => previewBloc.setFill(
-                    v,
-                    canvasBloc.canvas,
-                    canvasBloc.selectedHex,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(
-              width: 120,
-              child: CustomAutoCompleteInputWidget(
-                label: 'Stroke',
-                initialData: state.stroke.toString(),
-                placeholder: '≥ 1',
-                textInputType: TextInputType.number,
-                suggestList: const <String>['1', '2', '3', '4', '5', '8'],
-                onChangedDebounce: const Duration(milliseconds: 120),
-                onEditingValidateFunction: _validateStroke,
-                onChanged: (String v) {
-                  final int? n = int.tryParse(v);
-                  if (n != null && n >= 1) {
-                    previewBloc.setStroke(
-                      n,
-                      canvasBloc.canvas,
-                      canvasBloc.selectedHex,
-                    );
-                  }
-                },
-                onFieldSubmitted: (String v) {
-                  final int? n = int.tryParse(v);
-                  if (n != null && n >= 1) {
-                    previewBloc.setStroke(
-                      n,
-                      canvasBloc.canvas,
-                      canvasBloc.selectedHex,
-                    );
-                  }
-                },
-              ),
-            ),
-            ElevatedButton.icon(
-              onPressed: state.hasSelection
-                  ? () => previewBloc.apply(canvasBloc)
-                  : null,
-              icon: const Icon(Icons.egg_alt_outlined),
-              label: const Text('Dibujar óvalo'),
-            ),
-            // (opcional) resolución igual que otras pages
-            SizedBox(
-              width: 140,
-              child: CustomAutoCompleteInputWidget(
-                label: 'Resolución',
-                initialData: canvasBloc.canvas.width.toString(),
-                placeholder: 'N (NxN)',
-                textInputType: TextInputType.number,
-                suggestList: const <String>['10', '20', '40', '80', '160'],
-                onEditingValidateFunction: (String? value) => canvasBloc
-                    .validateResolutionValue(Utils.getStringFromDynamic(value)),
-                onChanged: (String v) => pendingRes = v,
-                onFieldSubmitted: (String v) {
-                  pendingRes = v;
-                  canvasBloc.updateResolutionFromString(pendingRes);
-                },
-              ),
-            ),
-            PixelIconButton(
-              tooltip: 'Aplicar resolución',
-              icon: const Icon(Icons.check_circle, color: Colors.blue),
-              onPressed: () =>
-                  canvasBloc.updateResolutionFromString(pendingRes),
-            ),
-          ],
-        ),
       ),
     );
   }
