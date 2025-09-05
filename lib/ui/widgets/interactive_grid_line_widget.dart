@@ -75,7 +75,7 @@ class InteractiveGridLineWidget extends StatelessWidget {
             }
 
             // Enforce minimum cell size (logical dp).
-            debugPrint('minCellDp: $base');
+
             final double cell = base < minCellDp ? minCellDp : base;
             final Size gridSize = Size(cell * c.width, cell * c.height);
 
@@ -96,7 +96,7 @@ class InteractiveGridLineWidget extends StatelessWidget {
                   canvas: c,
                   cellPadding: 0.25,
                   showCoordinates: showCoordinates,
-                  showGrid: blocCanvas.gridLineColor.a == 0,
+                  showGrid: blocCanvas.isOn,
                   coordinateColor: coordinateColor,
                   origin: origin,
                   destiny: destiny,

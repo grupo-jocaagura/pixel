@@ -77,6 +77,11 @@ class InteractiveGridLinePainter extends CustomPainter {
     final (double cell, double ox, double oy, double gridW, double gridH) =
         _gridMetrics(size);
 
+    final bool canShowText =
+        showCoordinates &&
+        cell >= 12.0 &&
+        canvas.width < 200 &&
+        canvas.height < 200;
     // 3) (Opcional) fondo del área de grid (por claridad)
     c.drawRect(
       Rect.fromLTWH(ox, oy, gridW, gridH),
@@ -84,7 +89,7 @@ class InteractiveGridLinePainter extends CustomPainter {
     );
 
     // 4) Coordenadas por celda
-    if (showCoordinates && canvas.width < 200 && canvas.height < 200) {
+    if (showCoordinates && canShowText) {
       final Color textColor = coordinateColor ?? Colors.grey;
       final double fs = cell * 0.30; // ~30% de la celda
       final TextStyle ts = TextStyle(
@@ -142,7 +147,7 @@ class InteractiveGridLinePainter extends CustomPainter {
     }
 
     // 8) Grilla (1px físico)
-    if (showGrid && canvas.width < 200 && canvas.height < 200) {
+    if (showGrid && canShowText) {
       const Color gl = Color(0x11000000);
       final double stroke = max(1.0 / (devicePixelRatio ?? 1.0), 0.5);
       final Paint line = Paint()

@@ -6,6 +6,7 @@ import '../ui_constants.dart';
 import '../widgets/back_button_widget.dart';
 import '../widgets/bottom_navigation_bar_widget.dart';
 import '../widgets/interactive_grid_widget.dart';
+import '../widgets/pixel_icon_button.dart';
 
 class SpeakTheCanvasPage extends StatelessWidget {
   const SpeakTheCanvasPage({super.key});
@@ -37,9 +38,10 @@ class SpeakTheCanvasPage extends StatelessWidget {
         ),
         leading: const BackButtonWidget(),
         actions: <Widget>[
-          IconButton(
+          PixelIconButton(
             icon: const Icon(Icons.clear),
             onPressed: blocCanvas.clear,
+            tooltip: 'Limpiar canvas',
           ),
         ],
       ),

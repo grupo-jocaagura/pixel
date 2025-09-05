@@ -9,6 +9,7 @@ import '../../domain/models/model_pixel.dart';
 import '../widgets/back_button_widget.dart';
 import '../widgets/bottom_controls_widget.dart';
 import '../widgets/interactive_grid_line_widget.dart';
+import '../widgets/pixel_icon_button.dart';
 
 class SpeakTheLinePage extends StatefulWidget {
   const SpeakTheLinePage({super.key});
@@ -77,7 +78,8 @@ class _SpeakTheLinePageState extends State<SpeakTheLinePage> {
         leading: const BackButtonWidget(),
         title: const Text('SpeakTheLine — Raster line demo'),
         actions: <Widget>[
-          IconButton(
+          PixelIconButton(
+            tooltip: 'Limpiar preview',
             icon: const Icon(Icons.layers_clear),
             onPressed: () => setState(() {
               origin = null;
@@ -92,7 +94,7 @@ class _SpeakTheLinePageState extends State<SpeakTheLinePage> {
           Expanded(
             child: InteractiveGridLineWidget(
               fit: GridFit.width,
-              minCellDp: 2.0,
+              minCellDp: 1.0 / MediaQuery.of(context).devicePixelRatio,
               blocCanvas: blocCanvas,
               showCoordinates: showCoords,
               coordinateColor: blocCanvas.selectedColor,

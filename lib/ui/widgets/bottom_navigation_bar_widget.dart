@@ -5,6 +5,7 @@ import '../../app/blocs/bloc_canvas.dart';
 import '../../domain/models/model_canvas.dart';
 import 'forms/custom_auto_complete_widget.dart';
 import 'grid_line_toggle_widget.dart';
+import 'pixel_icon_button.dart';
 
 String _value = '80'; // Valor por defecto para la resolución
 
@@ -48,7 +49,6 @@ class BottomNavigationBarWidget extends StatelessWidget {
                       ),
                     ),
                   ),
-                // Nuevo: Botón para resetear el canvas
                 const SizedBox(width: 24),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.refresh),
@@ -75,7 +75,7 @@ class BottomNavigationBarWidget extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton(
+                PixelIconButton(
                   icon: const Icon(Icons.check_circle, color: Colors.blue),
                   tooltip: 'Actualizar resolución',
                   onPressed: () =>

@@ -43,7 +43,6 @@ class SplashScreenPage extends StatelessWidget {
         context.appManager.replaceTopModel(HomePage.pageModel);
       }
     });
-    debugPrint('CONSTRUYENDO LA PANTALLA DE CARGA $_navigated');
     return Scaffold(
       body: Center(
         child: StreamBuilder<OnboardingState>(
