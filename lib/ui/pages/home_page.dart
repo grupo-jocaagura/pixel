@@ -3,7 +3,9 @@ import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 import 'package:text_responsive/text_responsive.dart';
 
 import 'speak_the_canvas_page.dart';
+import 'speak_the_circle_page.dart';
 import 'speak_the_line_page.dart';
+import 'speak_the_oval_page.dart';
 import 'speak_the_rect_page.dart';
 
 class HomePage extends StatelessWidget {
@@ -33,6 +35,16 @@ class HomePage extends StatelessWidget {
             label: 'Taller 2',
             description: 'Explicación del Rectangulo',
             page: SpeakTheRectPage.pageModel,
+          ),
+          MenuTileWidget(
+            label: 'Taller 2',
+            description: 'Explicación del Circulo',
+            page: SpeakTheCirclePage.pageModel,
+          ),
+          MenuTileWidget(
+            label: 'Taller 2',
+            description: 'Explicación del Ovalo',
+            page: SpeakTheOvalPage.pageModel,
           ),
         ],
       ),

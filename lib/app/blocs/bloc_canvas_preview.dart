@@ -96,46 +96,6 @@ class BlocCanvasPreview extends BlocModule {
     }
   }
 
-  /// Materializes the current preview into the canvas via [BlocCanvas].
-  void apply(BlocCanvas canvasBloc) {
-    if (!state.hasSelection) {
-      return;
-    }
-    final String hex = canvasBloc.selectedHex;
-    switch (state.tool) {
-      case DrawTool.line:
-        canvasBloc.drawLine(
-          ModelPixel.fromCoord(state.origin!.x, state.origin!.y, hexColor: hex),
-          ModelPixel.fromCoord(
-            state.destiny!.x,
-            state.destiny!.y,
-            hexColor: hex,
-          ),
-        );
-        break;
-      case DrawTool.rect:
-        canvasBloc.drawRectCorners(
-          ModelPixel.fromCoord(state.origin!.x, state.origin!.y, hexColor: hex),
-          ModelPixel.fromCoord(
-            state.destiny!.x,
-            state.destiny!.y,
-            hexColor: hex,
-          ),
-          fill: state.fill,
-          stroke: state.stroke,
-        );
-        break;
-    }
-    // Clear preview (optional)
-    _emit(
-      state.copyWith(
-        clearOrigin: true,
-        clearDestiny: true,
-        previewPixels: <ModelPixel>[],
-      ),
-    );
-  }
-
   // -----------------------------
   // Internals
   // -----------------------------
@@ -145,13 +105,15 @@ class BlocCanvasPreview extends BlocModule {
     }
   }
 
+  // app/blocs/bloc_canvas_preview.dart (añade casos al switch)
+
   void _recompute(ModelCanvas canvas, String hex) {
     if (!state.hasSelection) {
       _emit(state.copyWith(previewPixels: <ModelPixel>[]));
       return;
     }
 
-    List<ModelPixel> pixels;
+    List<ModelPixel> pixels = <ModelPixel>[];
     switch (state.tool) {
       case DrawTool.line:
         pixels = UtilPixelRaster.rasterLinePixels(
@@ -168,6 +130,7 @@ class BlocCanvasPreview extends BlocModule {
           ),
         );
         break;
+
       case DrawTool.rect:
         pixels = UtilPixelRaster.rasterRectPixels(
           canvas: canvas,
@@ -186,8 +149,98 @@ class BlocCanvasPreview extends BlocModule {
           stroke: state.stroke,
         );
         break;
+
+      case DrawTool.circle:
+        pixels = UtilPixelRaster.rasterCirclePixels(
+          canvas: canvas,
+          center: Point<int>(state.origin!.x, state.origin!.y),
+          edge: Point<int>(state.destiny!.x, state.destiny!.y),
+          hexColor: hex,
+          fill: state.fill,
+          stroke: state.stroke,
+        );
+        break;
+
+      case DrawTool.oval:
+        pixels = UtilPixelRaster.rasterOvalPixels(
+          canvas: canvas,
+          p1: Point<int>(state.origin!.x, state.origin!.y),
+          p2: Point<int>(state.destiny!.x, state.destiny!.y),
+          hexColor: hex,
+          fill: state.fill,
+          stroke: state.stroke,
+        );
+        break;
     }
     _emit(state.copyWith(previewPixels: pixels));
+  }
+
+  void apply(BlocCanvas canvasBloc) {
+    if (!state.hasSelection) {
+      return;
+    }
+    final String hex = canvasBloc.selectedHex;
+
+    switch (state.tool) {
+      case DrawTool.line:
+        canvasBloc.drawLine(
+          ModelPixel.fromCoord(state.origin!.x, state.origin!.y, hexColor: hex),
+          ModelPixel.fromCoord(
+            state.destiny!.x,
+            state.destiny!.y,
+            hexColor: hex,
+          ),
+        );
+        break;
+
+      case DrawTool.rect:
+        canvasBloc.drawRectCorners(
+          ModelPixel.fromCoord(state.origin!.x, state.origin!.y, hexColor: hex),
+          ModelPixel.fromCoord(
+            state.destiny!.x,
+            state.destiny!.y,
+            hexColor: hex,
+          ),
+          fill: state.fill,
+          stroke: state.stroke,
+        );
+        break;
+
+      case DrawTool.circle:
+        canvasBloc.drawCircleFromTwoPoints(
+          ModelPixel.fromCoord(state.origin!.x, state.origin!.y, hexColor: hex),
+          ModelPixel.fromCoord(
+            state.destiny!.x,
+            state.destiny!.y,
+            hexColor: hex,
+          ),
+          fill: state.fill,
+          stroke: state.stroke,
+        );
+        break;
+
+      case DrawTool.oval:
+        canvasBloc.drawOvalCorners(
+          ModelPixel.fromCoord(state.origin!.x, state.origin!.y, hexColor: hex),
+          ModelPixel.fromCoord(
+            state.destiny!.x,
+            state.destiny!.y,
+            hexColor: hex,
+          ),
+          fill: state.fill,
+          stroke: state.stroke,
+        );
+        break;
+    }
+
+    // Limpia selección y preview
+    _emit(
+      state.copyWith(
+        clearOrigin: true,
+        clearDestiny: true,
+        previewPixels: <ModelPixel>[],
+      ),
+    );
   }
 
   @override

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../domain/models/model_pixel.dart';
 
 /// Tool selector for previewing draw commands.
-enum DrawTool { line, rect /*, circle, oval*/ }
+enum DrawTool { line, rect, oval, circle }
 
 /// Immutable state for the preview bloc.
 @immutable

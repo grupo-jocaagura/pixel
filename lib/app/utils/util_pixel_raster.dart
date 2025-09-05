@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../../domain/models/model_canvas.dart';
 import '../../domain/models/model_pixel.dart';
 import '../../shared/util_color.dart';
@@ -246,4 +248,299 @@ class UtilPixelRaster {
 
   static int _clamp(int min, int max, int v) =>
       v < min ? min : (v > max ? max : v);
+
+  /// Internal: bounds check.
+  static bool _inside(ModelCanvas c, int x, int y) =>
+      x >= 0 && y >= 0 && x < c.width && y < c.height;
+
+  static void _setPx(Map<String, ModelPixel> acc, int x, int y, String hex) {
+    final String k = '$x,$y';
+    acc[k] = ModelPixel.fromCoord(x, y, hexColor: hex);
+  }
+
+  /// Returns integer distance rounded for circle radius from `center` to `p`.
+  static int _radiusFromTwoPoints(Point<int> center, Point<int> p) {
+    final int dx = (p.x - center.x).abs();
+    final int dy = (p.y - center.y).abs();
+    return sqrt(dx * dx + dy * dy).round();
+  }
+
+  /// Rasterize a circle (midpoint algorithm) as perimeter set.
+  static List<Point<int>> _midpointCircle(int cx, int cy, int r) {
+    final List<Point<int>> pts = <Point<int>>[];
+    int x = r;
+    int y = 0;
+    int err = 1 - r;
+    while (x >= y) {
+      pts.addAll(<Point<int>>[
+        Point<int>(cx + x, cy + y),
+        Point<int>(cx + y, cy + x),
+        Point<int>(cx - y, cy + x),
+        Point<int>(cx - x, cy + y),
+        Point<int>(cx - x, cy - y),
+        Point<int>(cx - y, cy - x),
+        Point<int>(cx + y, cy - x),
+        Point<int>(cx + x, cy - y),
+      ]);
+      y++;
+      if (err < 0) {
+        err += 2 * y + 1;
+      } else {
+        x--;
+        err += 2 * (y - x) + 1;
+      }
+    }
+    return pts;
+  }
+
+  /// Rasterize a filled circle (horizontal spans).
+  static Iterable<Point<int>> _filledCircleSpans(int cx, int cy, int r) sync* {
+    int x = r;
+    int y = 0;
+    int err = 1 - r;
+    while (x >= y) {
+      // For each octant pair, emit horizontal spans
+      for (int xx = cx - x; xx <= cx + x; xx++) {
+        yield Point<int>(xx, cy + y);
+        yield Point<int>(xx, cy - y);
+      }
+      for (int xx = cx - y; xx <= cx + y; xx++) {
+        yield Point<int>(xx, cy + x);
+        yield Point<int>(xx, cy - x);
+      }
+
+      y++;
+      if (err < 0) {
+        err += 2 * y + 1;
+      } else {
+        x--;
+        err += 2 * (y - x) + 1;
+      }
+    }
+  }
+
+  /// Adds a rasterized circle to the canvas pixels list (returns new canvas).
+  ///
+  /// If [fill] is true, fills the circle; otherwise draws only the outline.
+  /// [stroke] thickens the outline/fill border by drawing concentric rings.
+  /// When [radius] <= 0 nothing is changed.
+  static ModelCanvas drawCircle({
+    required ModelCanvas canvas,
+    required Point<int> center,
+    required int radius,
+    required String hexColor,
+    bool fill = false,
+    int stroke = 1,
+    bool overwrite = true,
+  }) {
+    if (radius <= 0) {
+      return canvas;
+    }
+    final Map<String, ModelPixel> acc = Map<String, ModelPixel>.from(
+      canvas.pixels,
+    );
+    final int cx = center.x, cy = center.y;
+    final String hex = UtilColor.normalizeHex(hexColor);
+
+    if (fill) {
+      // Fill once, then optionally accent border thickness by overlaying outlines
+      for (final Point<int> p in _filledCircleSpans(cx, cy, radius)) {
+        if (_inside(canvas, p.x, p.y)) {
+          _setPx(acc, p.x, p.y, hex);
+        }
+      }
+      for (int t = 0; t < stroke - 1; t++) {
+        final int rr = radius + t + 1;
+        for (final Point<int> p in _midpointCircle(cx, cy, rr)) {
+          if (_inside(canvas, p.x, p.y)) {
+            _setPx(acc, p.x, p.y, hex);
+          }
+        }
+      }
+    } else {
+      for (int t = 0; t < stroke; t++) {
+        final int rr = radius + t;
+        for (final Point<int> p in _midpointCircle(cx, cy, rr)) {
+          if (_inside(canvas, p.x, p.y)) {
+            _setPx(acc, p.x, p.y, hex);
+          }
+        }
+      }
+    }
+
+    return canvas.copyWith(pixels: Map<String, ModelPixel>.unmodifiable(acc));
+  }
+
+  /// Rasterize an ellipse outline (midpoint ellipse) centered at (cx,cy) with
+  /// radii a (x-axis) and b (y-axis).
+  static List<Point<int>> _midpointEllipse(int cx, int cy, int a, int b) {
+    final List<Point<int>> pts = <Point<int>>[];
+    int x = 0;
+    int y = b;
+    // Region 1
+    final double a2 = (a * a).toDouble();
+    final double b2 = (b * b).toDouble();
+    double d1 = b2 - a2 * b + 0.25 * a2;
+    while ((b2 * x) <= (a2 * y)) {
+      pts.addAll(<Point<int>>[
+        Point<int>(cx + x, cy + y),
+        Point<int>(cx - x, cy + y),
+        Point<int>(cx - x, cy - y),
+        Point<int>(cx + x, cy - y),
+      ]);
+      if (d1 < 0) {
+        x++;
+        d1 += b2 * (2 * x + 1);
+      } else {
+        x++;
+        y--;
+        d1 += b2 * (2 * x + 1) + a2 * (-2 * y);
+      }
+    }
+    // Region 2
+    double d2 = b2 * (x + 0.5) * (x + 0.5) + a2 * (y - 1) * (y - 1) - a2 * b2;
+    while (y >= 0) {
+      pts.addAll(<Point<int>>[
+        Point<int>(cx + x, cy + y),
+        Point<int>(cx - x, cy + y),
+        Point<int>(cx - x, cy - y),
+        Point<int>(cx + x, cy - y),
+      ]);
+      if (d2 > 0) {
+        y--;
+        d2 += a2 * (-2 * y + 1);
+      } else {
+        y--;
+        x++;
+        d2 += b2 * (2 * x) + a2 * (-2 * y + 1);
+      }
+    }
+    return pts;
+  }
+
+  /// Filled ellipse as vertical spans computed by solving y for each x column.
+  static Iterable<Point<int>> _filledEllipseSpans(
+    int cx,
+    int cy,
+    int a,
+    int b,
+  ) sync* {
+    if (a <= 0 || b <= 0) {
+      return;
+    }
+    for (int x = -a; x <= a; x++) {
+      // y = b * sqrt(1 - (x^2 / a^2))
+      final double t = 1.0 - (x * x) / (a * a);
+      final int y = t <= 0 ? 0 : (b * sqrt(t)).round();
+      for (int yy = -y; yy <= y; yy++) {
+        yield Point<int>(cx + x, cy + yy);
+      }
+    }
+  }
+
+  /// Adds a rasterized oval (ellipse) defined by opposite corners [p1] & [p2].
+  ///
+  /// If [fill] is true, fills the oval; otherwise draws only the outline.
+  /// [stroke] thickens the outline by drawing additional perimeters outward.
+  static ModelCanvas drawOvalCorners({
+    required ModelCanvas canvas,
+    required Point<int> p1,
+    required Point<int> p2,
+    required String hexColor,
+    bool fill = false,
+    int stroke = 1,
+    bool overwrite = true,
+  }) {
+    final Map<String, ModelPixel> acc = Map<String, ModelPixel>.from(
+      canvas.pixels,
+    );
+    final String hex = UtilColor.normalizeHex(hexColor);
+
+    final int minX = min(p1.x, p2.x);
+    final int maxX = max(p1.x, p2.x);
+    final int minY = min(p1.y, p2.y);
+    final int maxY = max(p1.y, p2.y);
+
+    final int w = maxX - minX + 1;
+    final int h = maxY - minY + 1;
+    if (w <= 0 || h <= 0) {
+      return canvas;
+    }
+
+    final int cx = (minX + maxX) ~/ 2;
+    final int cy = (minY + maxY) ~/ 2;
+    final int a = w ~/ 2; // radius x
+    final int b = h ~/ 2; // radius y
+
+    if (fill) {
+      for (final Point<int> p in _filledEllipseSpans(cx, cy, a, b)) {
+        if (_inside(canvas, p.x, p.y)) {
+          _setPx(acc, p.x, p.y, hex);
+        }
+      }
+      for (int t = 0; t < stroke - 1; t++) {
+        for (final Point<int> p in _midpointEllipse(
+          cx,
+          cy,
+          a + t + 1,
+          b + t + 1,
+        )) {
+          if (_inside(canvas, p.x, p.y)) {
+            _setPx(acc, p.x, p.y, hex);
+          }
+        }
+      }
+    } else {
+      for (int t = 0; t < stroke; t++) {
+        for (final Point<int> p in _midpointEllipse(cx, cy, a + t, b + t)) {
+          if (_inside(canvas, p.x, p.y)) {
+            _setPx(acc, p.x, p.y, hex);
+          }
+        }
+      }
+    }
+
+    return canvas.copyWith(pixels: Map<String, ModelPixel>.unmodifiable(acc));
+  }
+
+  /// Convenience to preview circle from two points: center & edge.
+  static List<ModelPixel> rasterCirclePixels({
+    required ModelCanvas canvas,
+    required Point<int> center,
+    required Point<int> edge,
+    required String hexColor,
+    bool fill = false,
+    int stroke = 1,
+  }) {
+    final int r = _radiusFromTwoPoints(center, edge);
+    final ModelCanvas next = drawCircle(
+      canvas: canvas,
+      center: center,
+      radius: r,
+      hexColor: hexColor,
+      fill: fill,
+      stroke: stroke,
+    );
+    return next.pixels.values.toList();
+  }
+
+  /// Convenience to preview oval from two corners.
+  static List<ModelPixel> rasterOvalPixels({
+    required ModelCanvas canvas,
+    required Point<int> p1,
+    required Point<int> p2,
+    required String hexColor,
+    bool fill = false,
+    int stroke = 1,
+  }) {
+    final ModelCanvas next = drawOvalCorners(
+      canvas: canvas,
+      p1: p1,
+      p2: p2,
+      hexColor: hexColor,
+      fill: fill,
+      stroke: stroke,
+    );
+    return next.pixels.values.toList();
+  }
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
@@ -366,6 +367,50 @@ class BlocCanvas extends BlocModule {
       p1: p1,
       p2: p2,
       hexColorOverride: hexColor ?? selectedHex,
+      fill: fill,
+      stroke: stroke,
+      overwrite: overwrite,
+    );
+    _saveDebouncer(save);
+  }
+
+  /// Draws a circle given center and edge (radius inferred from distance).
+  void drawCircleFromTwoPoints(
+    ModelPixel center,
+    ModelPixel edge, {
+    bool fill = false,
+    int stroke = 1,
+    bool overwrite = true,
+  }) {
+    _pushStateForUndo();
+    _blocCanvas.value = UtilPixelRaster.drawCircle(
+      canvas: canvas,
+      center: Point<int>(center.x, center.y),
+      radius: sqrt(
+        pow(edge.x - center.x, 2) + pow(edge.y - center.y, 2),
+      ).round(),
+      hexColor: UtilColor.normalizeHex(center.hexColor),
+      fill: fill,
+      stroke: stroke,
+      overwrite: overwrite,
+    );
+    _saveDebouncer(save);
+  }
+
+  /// Draws an oval (ellipse) from opposite corners.
+  void drawOvalCorners(
+    ModelPixel p1,
+    ModelPixel p2, {
+    bool fill = false,
+    int stroke = 1,
+    bool overwrite = true,
+  }) {
+    _pushStateForUndo();
+    _blocCanvas.value = UtilPixelRaster.drawOvalCorners(
+      canvas: canvas,
+      p1: Point<int>(p1.x, p1.y),
+      p2: Point<int>(p2.x, p2.y),
+      hexColor: UtilColor.normalizeHex(p1.hexColor),
       fill: fill,
       stroke: stroke,
       overwrite: overwrite,
