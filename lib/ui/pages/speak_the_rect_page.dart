@@ -27,7 +27,6 @@ class SpeakTheRectPage extends StatelessWidget {
     final BlocCanvasPreview previewBloc = context.appManager
         .requireModuleByKey<BlocCanvasPreview>(BlocCanvasPreview.name);
 
-    // Configurar herramienta rect al entrar
     previewBloc.setTool(
       DrawTool.rect,
       canvasBloc.canvas,
@@ -53,8 +52,8 @@ class SpeakTheRectPage extends StatelessWidget {
       body: StreamBuilder<StatePreview>(
         stream: previewBloc.stateStream,
         initialData: previewBloc.state,
-        builder: (_, AsyncSnapshot<StatePreview> snap) {
-          final StatePreview s = snap.data ?? previewBloc.state;
+        builder: (_, __) {
+          final StatePreview state = previewBloc.state;
 
           return Column(
             children: <Widget>[
@@ -62,11 +61,11 @@ class SpeakTheRectPage extends StatelessWidget {
                 child: InteractiveGridLineWidget(
                   fit: GridFit.width,
                   blocCanvas: canvasBloc,
-                  showCoordinates: s.showCoords,
+                  showCoordinates: state.showCoords,
                   coordinateColor: canvasBloc.selectedColor,
-                  origin: s.origin,
-                  destiny: s.destiny,
-                  previewPixels: s.previewPixels,
+                  origin: state.origin,
+                  destiny: state.destiny,
+                  previewPixels: state.previewPixels,
                   onCellTap: (Point<int> cell) {
                     previewBloc.tapCell(
                       cell,
@@ -79,7 +78,7 @@ class SpeakTheRectPage extends StatelessWidget {
               PreviewControlsWidget(
                 canvasBloc: canvasBloc,
                 previewBloc: previewBloc,
-                state: s,
+                state: state,
                 applyLabel: 'Dibujar rect',
                 applyIcon: Icons.crop_square,
                 coordinatesEditor: Wrap(
@@ -88,9 +87,9 @@ class SpeakTheRectPage extends StatelessWidget {
                   children: <Widget>[
                     CoordEditorWidget(
                       label: 'P1',
-                      value: s.origin,
-                      setValue: (Point<int>? p) => previewBloc.setOrigin(
-                        p,
+                      value: state.origin,
+                      setValue: (Point<int>? point) => previewBloc.setOrigin(
+                        point,
                         canvasBloc.canvas,
                         canvasBloc.selectedHex,
                       ),
@@ -98,9 +97,9 @@ class SpeakTheRectPage extends StatelessWidget {
                     ),
                     CoordEditorWidget(
                       label: 'P2',
-                      value: s.destiny,
-                      setValue: (Point<int>? p) => previewBloc.setDestiny(
-                        p,
+                      value: state.destiny,
+                      setValue: (Point<int>? point) => previewBloc.setDestiny(
+                        point,
                         canvasBloc.canvas,
                         canvasBloc.selectedHex,
                       ),
@@ -116,5 +115,3 @@ class SpeakTheRectPage extends StatelessWidget {
     );
   }
 }
-
-class PreviewControlsCommon {}
