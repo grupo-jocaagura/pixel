@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 import '../../app/blocs/bloc_canvas.dart';
-import '../../app/utils/util_pixel_raster.dart';
-import '../../domain/models/model_pixel.dart';
+import '../../app/blocs/bloc_canvas_preview.dart';
+import '../../domain/states/state_preview.dart';
 import '../widgets/back_button_widget.dart';
 import '../widgets/bottom_controls_widget.dart';
 import '../widgets/interactive_grid_line_widget.dart';
 import '../widgets/pixel_icon_button.dart';
 
-class SpeakTheLinePage extends StatefulWidget {
+class SpeakTheLinePage extends StatelessWidget {
   const SpeakTheLinePage({super.key});
 
   static const PageModel pageModel = PageModel(
@@ -20,57 +20,18 @@ class SpeakTheLinePage extends StatefulWidget {
   );
 
   @override
-  State<SpeakTheLinePage> createState() => _SpeakTheLinePageState();
-}
-
-class _SpeakTheLinePageState extends State<SpeakTheLinePage> {
-  Point<int>? origin;
-  Point<int>? destiny;
-  bool showCoords = true;
-  List<ModelPixel> preview = <ModelPixel>[];
-
-  void _recomputePreview(BlocCanvas blocCanvas) {
-    preview = <ModelPixel>[];
-    if (origin != null && destiny != null) {
-      preview = UtilPixelRaster.rasterLinePixels(
-        canvas: blocCanvas.canvas,
-        origin: ModelPixel.fromCoord(
-          origin!.x,
-          origin!.y,
-          hexColor: blocCanvas.selectedHex,
-        ),
-        destiny: ModelPixel.fromCoord(
-          destiny!.x,
-          destiny!.y,
-          hexColor: blocCanvas.selectedHex,
-        ),
-      );
-    }
-  }
-
-  void _applyLine(BlocCanvas blocCanvas) {
-    if (origin == null || destiny == null) {
-      return;
-    }
-    blocCanvas.drawLine(
-      ModelPixel.fromCoord(
-        origin!.x,
-        origin!.y,
-        hexColor: blocCanvas.selectedHex,
-      ),
-      ModelPixel.fromCoord(
-        destiny!.x,
-        destiny!.y,
-        hexColor: blocCanvas.selectedHex,
-      ),
-    );
-    setState(() => preview = <ModelPixel>[]);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final BlocCanvas blocCanvas = context.appManager
+    final BlocCanvas canvasBloc = context.appManager
         .requireModuleByKey<BlocCanvas>(BlocCanvas.name);
+    final BlocCanvasPreview previewBloc = context.appManager
+        .requireModuleByKey<BlocCanvasPreview>(BlocCanvasPreview.name);
+
+    // Asegura herramienta LINE al entrar (idempotente)
+    previewBloc.setTool(
+      DrawTool.line,
+      canvasBloc.canvas,
+      canvasBloc.selectedHex,
+    );
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -79,64 +40,64 @@ class _SpeakTheLinePageState extends State<SpeakTheLinePage> {
         title: const Text('SpeakTheLine — Raster line demo'),
         actions: <Widget>[
           PixelIconButton(
-            tooltip: 'Limpiar preview',
+            tooltip: 'Limpiar selección',
             icon: const Icon(Icons.layers_clear),
-            onPressed: () => setState(() {
-              origin = null;
-              destiny = null;
-              preview = <ModelPixel>[];
-            }),
+            onPressed: () => previewBloc.clearSelection(
+              canvasBloc.canvas,
+              canvasBloc.selectedHex,
+            ),
           ),
         ],
       ),
-      body: Column(
-        children: <Widget>[
-          Expanded(
-            child: InteractiveGridLineWidget(
-              fit: GridFit.width,
-              minCellDp: 1.0 / MediaQuery.of(context).devicePixelRatio,
-              blocCanvas: blocCanvas,
-              showCoordinates: showCoords,
-              coordinateColor: blocCanvas.selectedColor,
-              origin: origin,
-              destiny: destiny,
-              previewPixels: preview,
-              onCellTap: (Point<int> cell) {
-                setState(() {
-                  if (origin == null) {
-                    origin = cell;
-                  } else if (destiny == null) {
-                    destiny = cell;
-                  } else {
-                    origin = cell;
-                    destiny = null;
-                  }
-                  _recomputePreview(blocCanvas);
-                });
-              },
-            ),
-          ),
-          BottomControlsWidget(
-            blocCanvas: blocCanvas,
-            origin: origin,
-            destiny: destiny,
-            showCoords: showCoords,
-            onChangedOrigin: (Point<int>? p) {
-              setState(() {
-                origin = p;
-                _recomputePreview(blocCanvas);
-              });
-            },
-            onChangedDestiny: (Point<int>? p) {
-              setState(() {
-                destiny = p;
-                _recomputePreview(blocCanvas);
-              });
-            },
-            onToggleCoords: (bool v) => setState(() => showCoords = v),
-            onDraw: () => _applyLine(blocCanvas),
-          ),
-        ],
+      body: StreamBuilder<StatePreview>(
+        stream: previewBloc.stateStream,
+        initialData: previewBloc.state,
+        builder: (_, __) {
+          final StatePreview state = previewBloc.state;
+
+          return Column(
+            children: <Widget>[
+              Expanded(
+                child: InteractiveGridLineWidget(
+                  fit: GridFit.width,
+                  blocCanvas: canvasBloc,
+                  showCoordinates: state.showCoords,
+                  coordinateColor: canvasBloc.selectedColor,
+                  origin: state.origin,
+                  destiny: state.destiny,
+                  previewPixels: state.previewPixels,
+                  onCellTap: (Point<int> cell) => previewBloc.tapCell(
+                    cell,
+                    canvasBloc.canvas,
+                    canvasBloc.selectedHex,
+                  ),
+                ),
+              ),
+              BottomControlsWidget(
+                blocCanvas: canvasBloc,
+                origin: state.origin,
+                destiny: state.destiny,
+                showCoords: state.showCoords,
+                onChangedOrigin: (Point<int>? point) => previewBloc.setOrigin(
+                  point,
+                  canvasBloc.canvas,
+                  canvasBloc.selectedHex,
+                ),
+                onChangedDestiny: (Point<int>? point) => previewBloc.setDestiny(
+                  point,
+                  canvasBloc.canvas,
+                  canvasBloc.selectedHex,
+                ),
+                onToggleCoords: (bool value) => previewBloc.setShowCoords(
+                  value,
+                  canvasBloc.canvas,
+                  canvasBloc.selectedHex,
+                ),
+                onDraw: () => previewBloc.apply(canvasBloc),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

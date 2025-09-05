@@ -7,6 +7,7 @@ import '../domain/repositories/repository_canvas.dart';
 import '../domain/usecases/canvas/canvas_usecases.dart';
 import '../ui/pages/pages.dart';
 import 'blocs/bloc_canvas.dart';
+import 'blocs/bloc_canvas_preview.dart';
 
 enum AppMode { dev, qa, prod }
 
@@ -63,7 +64,10 @@ class PixelConfig {
       blocResponsive: BlocResponsive(),
       blocOnboarding: BlocOnboarding(),
       pageManager: PageManager(initial: navStackModel),
-      blocModuleList: <String, BlocModule>{BlocCanvas.name: blocCanvas},
+      blocModuleList: <String, BlocModule>{
+        BlocCanvas.name: blocCanvas,
+        BlocCanvasPreview.name: BlocCanvasPreview(),
+      },
     );
   }
 }
