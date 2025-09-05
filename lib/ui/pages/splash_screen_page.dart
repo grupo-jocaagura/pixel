@@ -38,8 +38,12 @@ class SplashScreenPage extends StatelessWidget {
         onboarding.configure(onboardingSteps);
         onboarding.start();
       }
+      if (onboarding.state.status == OnboardingStatus.completed ||
+          onboarding.state.status == OnboardingStatus.skipped) {
+        context.appManager.replaceTopModel(HomePage.pageModel);
+      }
     });
-    debugPrint('CONSTRUYENDO LA PANTALLA DE CARGA');
+    debugPrint('CONSTRUYENDO LA PANTALLA DE CARGA $_navigated');
     return Scaffold(
       body: Center(
         child: StreamBuilder<OnboardingState>(
