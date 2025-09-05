@@ -49,7 +49,7 @@ class BlocCanvasPreview extends BlocModule {
 
   void setShowCoords(bool show, ModelCanvas canvas, String hex) {
     _emit(state.copyWith(showCoords: show));
-    // No recalcula píxeles, solo UI
+    _recompute(canvas, hex);
   }
 
   void setFill(bool fill, ModelCanvas canvas, String hex) {
