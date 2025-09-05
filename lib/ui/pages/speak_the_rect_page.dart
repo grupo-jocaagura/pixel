@@ -5,14 +5,16 @@ import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 import 'package:text_responsive/text_responsive.dart';
 
 import '../../app/blocs/bloc_canvas.dart';
-import '../../app/utils/util_pixel_raster.dart';
-import '../../domain/models/model_pixel.dart';
+import '../../app/blocs/bloc_canvas_preview.dart';
+import '../../domain/states/state_preview.dart';
 import '../widgets/back_button_widget.dart';
 import '../widgets/forms/coord_editor_widget.dart';
 import '../widgets/interactive_grid_line_widget.dart';
 import '../widgets/pixel_icon_button.dart';
 
-class SpeakTheRectPage extends StatefulWidget {
+/// Stateless page that previews and applies rectangle drawing commands
+/// using BlocCanvas + BlocCanvasPreview (StatePreview).
+class SpeakTheRectPage extends StatelessWidget {
   const SpeakTheRectPage({super.key});
 
   static const PageModel pageModel = PageModel(
@@ -21,57 +23,18 @@ class SpeakTheRectPage extends StatefulWidget {
   );
 
   @override
-  State<SpeakTheRectPage> createState() => _SpeakTheRectPageState();
-}
-
-class _SpeakTheRectPageState extends State<SpeakTheRectPage> {
-  Point<int>? p1;
-  Point<int>? p2;
-  bool showCoords = true;
-  bool fill = false;
-  int stroke = 1;
-
-  List<ModelPixel> preview = <ModelPixel>[];
-
-  void _recomputePreview(BlocCanvas blocCanvas) {
-    preview = <ModelPixel>[];
-    if (p1 != null && p2 != null) {
-      preview = UtilPixelRaster.rasterRectPixels(
-        canvas: blocCanvas.canvas,
-        p1: ModelPixel.fromCoord(
-          p1!.x,
-          p1!.y,
-          hexColor: blocCanvas.selectedHex,
-        ),
-        p2: ModelPixel.fromCoord(
-          p2!.x,
-          p2!.y,
-          hexColor: blocCanvas.selectedHex,
-        ),
-        hexColor: blocCanvas.selectedHex,
-        fill: fill,
-        stroke: stroke,
-      );
-    }
-  }
-
-  void _apply(BlocCanvas blocCanvas) {
-    if (p1 == null || p2 == null) {
-      return;
-    }
-    blocCanvas.drawRectCorners(
-      ModelPixel.fromCoord(p1!.x, p1!.y, hexColor: blocCanvas.selectedHex),
-      ModelPixel.fromCoord(p2!.x, p2!.y, hexColor: blocCanvas.selectedHex),
-      fill: fill,
-      stroke: stroke,
-    );
-    setState(() => preview = <ModelPixel>[]);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final BlocCanvas blocCanvas = context.appManager
+    final BlocCanvas canvasBloc = context.appManager
         .requireModuleByKey<BlocCanvas>(BlocCanvas.name);
+    final BlocCanvasPreview previewBloc = context.appManager
+        .requireModuleByKey<BlocCanvasPreview>(BlocCanvasPreview.name);
+
+    // Idempotente: asegura herramienta Rect al entrar.
+    previewBloc.setTool(
+      DrawTool.rect,
+      canvasBloc.canvas,
+      canvasBloc.selectedHex,
+    );
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -82,76 +45,46 @@ class _SpeakTheRectPageState extends State<SpeakTheRectPage> {
           PixelIconButton(
             tooltip: 'Limpiar selección',
             icon: const Icon(Icons.layers_clear),
-            onPressed: () => setState(() {
-              p1 = null;
-              p2 = null;
-              preview = <ModelPixel>[];
-            }),
+            onPressed: () => previewBloc.clearSelection(
+              canvasBloc.canvas,
+              canvasBloc.selectedHex,
+            ),
           ),
         ],
       ),
-      body: Column(
-        children: <Widget>[
-          Expanded(
-            child: InteractiveGridLineWidget(
-              fit: GridFit.width,
-              blocCanvas: blocCanvas,
-              showCoordinates: showCoords,
-              coordinateColor: blocCanvas.selectedColor,
-              origin: p1,
-              destiny: p2,
-              minCellDp: 1.0 / MediaQuery.of(context).devicePixelRatio,
-              previewPixels: preview,
-              onCellTap: (Point<int> cell) {
-                setState(() {
-                  if (p1 == null) {
-                    p1 = cell;
-                  } else if (p2 == null) {
-                    p2 = cell;
-                  } else {
-                    p1 = cell;
-                    p2 = null;
-                  }
-                  _recomputePreview(blocCanvas);
-                });
-              },
-            ),
-          ),
-          _BottomControlsRect(
-            blocCanvas: blocCanvas,
-            p1: p1,
-            p2: p2,
-            showCoords: showCoords,
-            fill: fill,
-            stroke: stroke,
-            onChangedP1: (Point<int>? v) {
-              setState(() {
-                p1 = v;
-                _recomputePreview(blocCanvas);
-              });
-            },
-            onChangedP2: (Point<int>? v) {
-              setState(() {
-                p2 = v;
-                _recomputePreview(blocCanvas);
-              });
-            },
-            onToggleCoords: (bool v) => setState(() => showCoords = v),
-            onToggleFill: (bool v) {
-              setState(() {
-                fill = v;
-                _recomputePreview(blocCanvas);
-              });
-            },
-            onChangedStroke: (int v) {
-              setState(() {
-                stroke = v;
-                _recomputePreview(blocCanvas);
-              });
-            },
-            onApply: () => _apply(blocCanvas),
-          ),
-        ],
+      body: StreamBuilder<StatePreview>(
+        stream: previewBloc.stateStream,
+        initialData: previewBloc.state,
+        builder: (_, AsyncSnapshot<StatePreview> snap) {
+          final StatePreview s = snap.data ?? previewBloc.state;
+
+          return Column(
+            children: <Widget>[
+              Expanded(
+                child: InteractiveGridLineWidget(
+                  fit: GridFit.width,
+                  blocCanvas: canvasBloc,
+                  showCoordinates: s.showCoords,
+                  coordinateColor: canvasBloc.selectedColor,
+                  origin: s.origin,
+                  destiny: s.destiny,
+                  previewPixels: s.previewPixels,
+                  onCellTap: (Point<int> cell) => previewBloc.tapCell(
+                    cell,
+                    canvasBloc.canvas,
+                    canvasBloc.selectedHex,
+                  ),
+                ),
+              ),
+
+              _BottomControlsRect(
+                canvasBloc: canvasBloc,
+                previewBloc: previewBloc,
+                state: s,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -159,41 +92,33 @@ class _SpeakTheRectPageState extends State<SpeakTheRectPage> {
 
 class _BottomControlsRect extends StatelessWidget {
   const _BottomControlsRect({
-    required this.blocCanvas,
-    required this.p1,
-    required this.p2,
-    required this.showCoords,
-    required this.fill,
-    required this.stroke,
-    required this.onChangedP1,
-    required this.onChangedP2,
-    required this.onToggleCoords,
-    required this.onToggleFill,
-    required this.onChangedStroke,
-    required this.onApply,
+    required this.canvasBloc,
+    required this.previewBloc,
+    required this.state,
   });
 
-  final BlocCanvas blocCanvas;
-  final Point<int>? p1;
-  final Point<int>? p2;
-  final bool showCoords;
-  final bool fill;
-  final int stroke;
+  final BlocCanvas canvasBloc;
+  final BlocCanvasPreview previewBloc;
+  final StatePreview state;
 
-  final ValueChanged<Point<int>?> onChangedP1;
-  final ValueChanged<Point<int>?> onChangedP2;
-  final ValueChanged<bool> onToggleCoords;
-  final ValueChanged<bool> onToggleFill;
-  final ValueChanged<int> onChangedStroke;
-  final VoidCallback onApply;
+  String? _validateStroke(String? v) {
+    if (v == null || v.isEmpty) {
+      return 'requerido';
+    }
+    final int? n = int.tryParse(v);
+    if (n == null || n < 1) {
+      return 'mínimo 1';
+    }
+    if (n > 999) {
+      return 'demasiado grande';
+    }
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
-    void deferStroke(int n) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => onChangedStroke(n));
-    }
+    String pendingRes = canvasBloc.canvas.width.toString();
 
-    String pendingRes = blocCanvas.canvas.width.toString();
     return Material(
       elevation: 4,
       child: Padding(
@@ -201,94 +126,119 @@ class _BottomControlsRect extends StatelessWidget {
         child: Wrap(
           spacing: 16,
           crossAxisAlignment: WrapCrossAlignment.center,
+          runSpacing: 8,
           children: <Widget>[
+            // Origen / Destino (reutiliza tu editor de coords)
             CoordEditorWidget(
-              label: 'P1',
-              value: p1,
-              setValue: onChangedP1,
-              blocCanvas: blocCanvas,
-            ),
-            CoordEditorWidget(
-              label: 'P2',
-              value: p2,
-              setValue: onChangedP2,
-              blocCanvas: blocCanvas,
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                const InlineTextWidget('Fill'),
-                Switch(value: fill, onChanged: onToggleFill),
-              ],
-            ),
-            if (!fill)
-              SizedBox(
-                width: 120,
-                child: CustomAutoCompleteInputWidget(
-                  label: 'Stroke',
-                  initialData: '$stroke',
-                  placeholder: 'grosor',
-                  textInputType: TextInputType.number,
-                  suggestList: const <String>[
-                    '1',
-                    '2',
-                    '3',
-                    '4',
-                    '5',
-                    '6',
-                    '8',
-                    '10',
-                  ],
-                  onEditingValidateFunction: (String? v) {
-                    final int? n = int.tryParse(v ?? '');
-                    if (n == null || n <= 0) {
-                      return 'inválido';
-                    }
-                    // opcional: clamp por tamaño actual
-                    return null;
-                  },
-                  onChanged: (String v) {
-                    final int? n = int.tryParse(v);
-                    if (n != null && n > 0) {
-                      deferStroke(n);
-                    }
-                  },
-                  onFieldSubmitted: (String v) {
-                    final int? n = int.tryParse(v);
-                    if (n != null && n > 0) {
-                      deferStroke(n);
-                    }
-                  },
-                ),
+              label: 'Origen',
+              value: state.origin,
+              setValue: (Point<int>? p) => previewBloc.setOrigin(
+                p,
+                canvasBloc.canvas,
+                canvasBloc.selectedHex,
               ),
+              blocCanvas: canvasBloc,
+            ),
+            CoordEditorWidget(
+              label: 'Destino',
+              value: state.destiny,
+              setValue: (Point<int>? p) => previewBloc.setDestiny(
+                p,
+                canvasBloc.canvas,
+                canvasBloc.selectedHex,
+              ),
+              blocCanvas: canvasBloc,
+            ),
 
+            // Mostrar coordenadas
             Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 const InlineTextWidget('Mostrar coord'),
-                Switch(value: showCoords, onChanged: onToggleCoords),
+                Switch(
+                  value: state.showCoords,
+                  onChanged: (bool v) => previewBloc.setShowCoords(
+                    v,
+                    canvasBloc.canvas,
+                    canvasBloc.selectedHex,
+                  ),
+                ),
               ],
             ),
+
+            // Fill
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                const InlineTextWidget('Relleno'),
+                Switch(
+                  value: state.fill,
+                  onChanged: (bool v) => previewBloc.setFill(
+                    v,
+                    canvasBloc.canvas,
+                    canvasBloc.selectedHex,
+                  ),
+                ),
+              ],
+            ),
+
+            // Stroke (con debounce para evitar chispazos)
+            SizedBox(
+              width: 140,
+              child: CustomAutoCompleteInputWidget(
+                label: 'Stroke',
+                initialData: state.stroke.toString(),
+                placeholder: '≥ 1',
+                textInputType: TextInputType.number,
+                suggestList: const <String>['1', '2', '3', '4', '5', '8', '10'],
+                onChangedDebounce: const Duration(milliseconds: 120),
+                onEditingValidateFunction: _validateStroke,
+                onChanged: (String v) {
+                  final int? n = int.tryParse(v);
+                  if (n != null && n >= 1) {
+                    previewBloc.setStroke(
+                      n,
+                      canvasBloc.canvas,
+                      canvasBloc.selectedHex,
+                    );
+                  }
+                },
+                onFieldSubmitted: (String v) {
+                  final int? n = int.tryParse(v);
+                  if (n != null && n >= 1) {
+                    previewBloc.setStroke(
+                      n,
+                      canvasBloc.canvas,
+                      canvasBloc.selectedHex,
+                    );
+                  }
+                },
+              ),
+            ),
+
             ElevatedButton.icon(
-              onPressed: (p1 != null && p2 != null) ? onApply : null,
-              icon: const Icon(Icons.crop_square),
+              onPressed: state.hasSelection
+                  ? () => previewBloc.apply(canvasBloc)
+                  : null,
+              icon: const Icon(Icons.crop_square_rounded),
               label: const Text('Dibujar rect'),
             ),
-            // --- Resolución (cuadrada) como en el BottomNavigationBarWidget
+
+            // --- (Opcional) Resolución como en Line ---
             SizedBox(
               width: 140,
               child: CustomAutoCompleteInputWidget(
                 label: 'Resolución',
-                initialData: blocCanvas.canvas.width.toString(),
+                initialData: canvasBloc.canvas.width.toString(),
                 placeholder: 'N (NxN)',
                 textInputType: TextInputType.number,
                 suggestList: const <String>['10', '20', '40', '80', '160'],
-                onEditingValidateFunction: (String? value) => blocCanvas
+                onEditingValidateFunction: (String? value) => canvasBloc
                     .validateResolutionValue(Utils.getStringFromDynamic(value)),
                 onChanged: (String v) => pendingRes = v,
                 onFieldSubmitted: (String v) {
                   pendingRes = v;
-                  blocCanvas.updateResolutionFromString(pendingRes);
+                  canvasBloc.updateResolutionFromString(pendingRes);
                 },
               ),
             ),
@@ -296,7 +246,7 @@ class _BottomControlsRect extends StatelessWidget {
               tooltip: 'Aplicar resolución',
               icon: const Icon(Icons.check_circle, color: Colors.blue),
               onPressed: () =>
-                  blocCanvas.updateResolutionFromString(pendingRes),
+                  canvasBloc.updateResolutionFromString(pendingRes),
             ),
           ],
         ),
