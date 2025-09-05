@@ -4,6 +4,7 @@ import 'package:text_responsive/text_responsive.dart';
 
 import 'speak_the_canvas_page.dart';
 import 'speak_the_line_page.dart';
+import 'speak_the_rect_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -27,6 +28,11 @@ class HomePage extends StatelessWidget {
             label: 'Taller 2',
             description: 'Explicación de la linea',
             page: SpeakTheLinePage.pageModel,
+          ),
+          MenuTileWidget(
+            label: 'Taller 2',
+            description: 'Explicación del Rectangulo',
+            page: SpeakTheRectPage.pageModel,
           ),
         ],
       ),

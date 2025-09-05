@@ -1,5 +1,6 @@
 import '../../domain/models/model_canvas.dart';
 import '../../domain/models/model_pixel.dart';
+import '../../shared/util_color.dart';
 
 /// Utilities to rasterize vector primitives into a pixel-art [ModelCanvas].
 ///
@@ -135,4 +136,114 @@ class UtilPixelRaster {
     }
     return out;
   }
+
+  /// Returns the pixels of a rectangle defined by two opposite corners.
+  /// If [fill] is true, fills the area. Otherwise draws the border with [stroke].
+  static List<ModelPixel> rasterRectPixels({
+    required ModelCanvas canvas,
+    required ModelPixel p1,
+    required ModelPixel p2,
+    required String hexColor,
+    bool fill = false,
+    int stroke = 1,
+  }) {
+    final int minX = _clamp(0, canvas.width - 1, p1.x < p2.x ? p1.x : p2.x);
+    final int maxX = _clamp(0, canvas.width - 1, p1.x > p2.x ? p1.x : p2.x);
+    final int minY = _clamp(0, canvas.height - 1, p1.y < p2.y ? p1.y : p2.y);
+    final int maxY = _clamp(0, canvas.height - 1, p1.y > p2.y ? p1.y : p2.y);
+    final List<ModelPixel> out = <ModelPixel>[];
+    if (minX > maxX || minY > maxY) {
+      return <ModelPixel>[];
+    }
+
+    final Set<String> seen = <String>{};
+    void add(int x, int y) {
+      if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) {
+        return;
+      }
+      final ModelPixel px = ModelPixel.fromCoord(x, y, hexColor: hexColor);
+      if (seen.add(px.keyForCanvas)) {
+        out.add(px);
+      }
+    }
+
+    final int w = (maxX - minX) + 1;
+    final int h = (maxY - minY) + 1;
+
+    if (fill || w <= 2 || h <= 2) {
+      // FILL (o rectángulos demasiado pequeños para stroke interno)
+      for (int y = minY; y <= maxY; y++) {
+        for (int x = minX; x <= maxX; x++) {
+          add(x, y);
+        }
+      }
+      return out;
+    }
+
+    // STROKE: clamp thickness
+    final int t = stroke < 1 ? 1 : stroke;
+    final int tX = t > w ? w : t;
+    final int tY = t > h ? h : t;
+
+    // Tiras superior e inferior
+    for (int y = minY; y < minY + tY; y++) {
+      for (int x = minX; x <= maxX; x++) {
+        add(x, y);
+      }
+    }
+    for (int y = maxY - tY + 1; y <= maxY; y++) {
+      for (int x = minX; x <= maxX; x++) {
+        add(x, y);
+      }
+    }
+
+    // Tiras izquierda y derecha (sin volver a pintar lo ya cubierto)
+    for (int x = minX; x < minX + tX; x++) {
+      for (int y = minY + tY; y <= maxY - tY; y++) {
+        add(x, y);
+      }
+    }
+    for (int x = maxX - tX + 1; x <= maxX; x++) {
+      for (int y = minY + tY; y <= maxY - tY; y++) {
+        add(x, y);
+      }
+    }
+
+    return out;
+  }
+
+  /// Draws a rectangle into a new canvas snapshot.
+  static ModelCanvas drawRect({
+    required ModelCanvas canvas,
+    required ModelPixel p1,
+    required ModelPixel p2,
+    String? hexColorOverride,
+    bool fill = false,
+    int stroke = 1,
+    bool overwrite = true,
+  }) {
+    final String hex = UtilColor.normalizeHex(hexColorOverride ?? p1.hexColor);
+    final List<ModelPixel> pixels = rasterRectPixels(
+      canvas: canvas,
+      p1: p1,
+      p2: p2,
+      hexColor: hex,
+      fill: fill,
+      stroke: stroke,
+    );
+
+    final Map<String, ModelPixel> m = Map<String, ModelPixel>.from(
+      canvas.pixels,
+    );
+    for (final ModelPixel px in pixels) {
+      final String k = px.keyForCanvas;
+      if (overwrite || !m.containsKey(k)) {
+        m[k] = px;
+      }
+    }
+    return canvas.copyWith(pixels: Map<String, ModelPixel>.unmodifiable(m));
+  }
+
+  static int _clamp(int min, int max, int v) =>
+      v < min ? min : (v > max ? max : v);
 }

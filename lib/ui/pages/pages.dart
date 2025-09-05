@@ -4,6 +4,7 @@ import 'home_page.dart';
 import 'not_found_route_page.dart';
 import 'speak_the_canvas_page.dart';
 import 'speak_the_line_page.dart';
+import 'speak_the_rect_page.dart';
 import 'splash_screen_page.dart';
 
 const List<PageModel> pages = <PageModel>[SplashScreenPage.pageModel];
@@ -31,6 +32,10 @@ final PageRegistry pageRegistry = PageRegistry.fromDefs(
     PageDef(
       model: SpeakTheLinePage.pageModel,
       builder: (_, PageModel page) => const SpeakTheLinePage(),
+    ),
+    PageDef(
+      model: SpeakTheRectPage.pageModel,
+      builder: (_, PageModel page) => const SpeakTheRectPage(),
     ),
   ],
   notFoundBuilder: (_, PageModel page) => const NotFoundRoutePage(),

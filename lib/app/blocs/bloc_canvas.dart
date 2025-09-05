@@ -349,6 +349,30 @@ class BlocCanvas extends BlocModule {
     _saveDebouncer(save);
   }
 
+  /// Draws a rectangle defined by two opposite corners.
+  /// When [fill] is true, the rectangle is filled. Otherwise, a border is drawn
+  /// with [stroke] logical pixels thickness.
+  void drawRectCorners(
+    ModelPixel p1,
+    ModelPixel p2, {
+    String? hexColor,
+    bool fill = false,
+    int stroke = 1,
+    bool overwrite = true,
+  }) {
+    _pushStateForUndo();
+    _blocCanvas.value = UtilPixelRaster.drawRect(
+      canvas: canvas,
+      p1: p1,
+      p2: p2,
+      hexColorOverride: hexColor ?? selectedHex,
+      fill: fill,
+      stroke: stroke,
+      overwrite: overwrite,
+    );
+    _saveDebouncer(save);
+  }
+
   @override
   void dispose() {
     _watchSubscription?.cancel();
