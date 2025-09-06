@@ -1,8 +1,12 @@
 import 'dart:math';
 
+import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
+import 'package:jocaaguraarchetype/jocaaguraarchetype_domain.dart';
+
 import '../../domain/models/model_canvas.dart';
 import '../../domain/models/model_pixel.dart';
 import '../../shared/util_color.dart';
+import 'model_vector_bridge.dart';
 
 /// Utilities to rasterize vector primitives into a pixel-art [ModelCanvas].
 ///
@@ -259,28 +263,28 @@ class UtilPixelRaster {
   }
 
   /// Returns integer distance rounded for circle radius from `center` to `p`.
-  static int _radiusFromTwoPoints(Point<int> center, Point<int> p) {
+  static int _radiusFromTwoPoints(ModelVector center, ModelVector p) {
     final int dx = (p.x - center.x).abs();
     final int dy = (p.y - center.y).abs();
     return sqrt(dx * dx + dy * dy).round();
   }
 
   /// Rasterize a circle (midpoint algorithm) as perimeter set.
-  static List<Point<int>> _midpointCircle(int cx, int cy, int r) {
-    final List<Point<int>> pts = <Point<int>>[];
+  static List<ModelVector> _midpointCircle(int cx, int cy, int r) {
+    final List<ModelVector> pts = <ModelVector>[];
     int x = r;
     int y = 0;
     int err = 1 - r;
     while (x >= y) {
-      pts.addAll(<Point<int>>[
-        Point<int>(cx + x, cy + y),
-        Point<int>(cx + y, cy + x),
-        Point<int>(cx - y, cy + x),
-        Point<int>(cx - x, cy + y),
-        Point<int>(cx - x, cy - y),
-        Point<int>(cx - y, cy - x),
-        Point<int>(cx + y, cy - x),
-        Point<int>(cx + x, cy - y),
+      pts.addAll(<ModelVector>[
+        defaultModelVector.fromXY(cx + x, cy + y),
+        defaultModelVector.fromXY(cx + y, cy + x),
+        defaultModelVector.fromXY(cx - y, cy + x),
+        defaultModelVector.fromXY(cx - x, cy + y),
+        defaultModelVector.fromXY(cx - x, cy - y),
+        defaultModelVector.fromXY(cx - y, cy - x),
+        defaultModelVector.fromXY(cx + y, cy - x),
+        defaultModelVector.fromXY(cx + x, cy - y),
       ]);
       y++;
       if (err < 0) {
@@ -294,19 +298,19 @@ class UtilPixelRaster {
   }
 
   /// Rasterize a filled circle (horizontal spans).
-  static Iterable<Point<int>> _filledCircleSpans(int cx, int cy, int r) sync* {
+  static Iterable<ModelVector> _filledCircleSpans(int cx, int cy, int r) sync* {
     int x = r;
     int y = 0;
     int err = 1 - r;
     while (x >= y) {
       // For each octant pair, emit horizontal spans
       for (int xx = cx - x; xx <= cx + x; xx++) {
-        yield Point<int>(xx, cy + y);
-        yield Point<int>(xx, cy - y);
+        yield defaultModelVector.fromXY(xx, cy + y);
+        yield defaultModelVector.fromXY(xx, cy - y);
       }
       for (int xx = cx - y; xx <= cx + y; xx++) {
-        yield Point<int>(xx, cy + x);
-        yield Point<int>(xx, cy - x);
+        yield defaultModelVector.fromXY(xx, cy + x);
+        yield defaultModelVector.fromXY(xx, cy - x);
       }
 
       y++;
@@ -326,7 +330,7 @@ class UtilPixelRaster {
   /// When [radius] <= 0 nothing is changed.
   static ModelCanvas drawCircle({
     required ModelCanvas canvas,
-    required Point<int> center,
+    required ModelVector center,
     required int radius,
     required String hexColor,
     bool fill = false,
@@ -344,14 +348,14 @@ class UtilPixelRaster {
 
     if (fill) {
       // Fill once, then optionally accent border thickness by overlaying outlines
-      for (final Point<int> p in _filledCircleSpans(cx, cy, radius)) {
+      for (final ModelVector p in _filledCircleSpans(cx, cy, radius)) {
         if (_inside(canvas, p.x, p.y)) {
           _setPx(acc, p.x, p.y, hex);
         }
       }
       for (int t = 0; t < stroke - 1; t++) {
         final int rr = radius + t + 1;
-        for (final Point<int> p in _midpointCircle(cx, cy, rr)) {
+        for (final ModelVector p in _midpointCircle(cx, cy, rr)) {
           if (_inside(canvas, p.x, p.y)) {
             _setPx(acc, p.x, p.y, hex);
           }
@@ -360,7 +364,7 @@ class UtilPixelRaster {
     } else {
       for (int t = 0; t < stroke; t++) {
         final int rr = radius + t;
-        for (final Point<int> p in _midpointCircle(cx, cy, rr)) {
+        for (final ModelVector p in _midpointCircle(cx, cy, rr)) {
           if (_inside(canvas, p.x, p.y)) {
             _setPx(acc, p.x, p.y, hex);
           }
@@ -373,8 +377,8 @@ class UtilPixelRaster {
 
   /// Rasterize an ellipse outline (midpoint ellipse) centered at (cx,cy) with
   /// radii a (x-axis) and b (y-axis).
-  static List<Point<int>> _midpointEllipse(int cx, int cy, int a, int b) {
-    final List<Point<int>> pts = <Point<int>>[];
+  static List<ModelVector> _midpointEllipse(int cx, int cy, int a, int b) {
+    final List<ModelVector> pts = <ModelVector>[];
     int x = 0;
     int y = b;
     // Region 1
@@ -382,11 +386,11 @@ class UtilPixelRaster {
     final double b2 = (b * b).toDouble();
     double d1 = b2 - a2 * b + 0.25 * a2;
     while ((b2 * x) <= (a2 * y)) {
-      pts.addAll(<Point<int>>[
-        Point<int>(cx + x, cy + y),
-        Point<int>(cx - x, cy + y),
-        Point<int>(cx - x, cy - y),
-        Point<int>(cx + x, cy - y),
+      pts.addAll(<ModelVector>[
+        defaultModelVector.fromXY(cx + x, cy + y),
+        defaultModelVector.fromXY(cx - x, cy + y),
+        defaultModelVector.fromXY(cx - x, cy - y),
+        defaultModelVector.fromXY(cx + x, cy - y),
       ]);
       if (d1 < 0) {
         x++;
@@ -400,11 +404,11 @@ class UtilPixelRaster {
     // Region 2
     double d2 = b2 * (x + 0.5) * (x + 0.5) + a2 * (y - 1) * (y - 1) - a2 * b2;
     while (y >= 0) {
-      pts.addAll(<Point<int>>[
-        Point<int>(cx + x, cy + y),
-        Point<int>(cx - x, cy + y),
-        Point<int>(cx - x, cy - y),
-        Point<int>(cx + x, cy - y),
+      pts.addAll(<ModelVector>[
+        defaultModelVector.fromXY(cx + x, cy + y),
+        defaultModelVector.fromXY(cx - x, cy + y),
+        defaultModelVector.fromXY(cx - x, cy - y),
+        defaultModelVector.fromXY(cx + x, cy - y),
       ]);
       if (d2 > 0) {
         y--;
@@ -419,7 +423,7 @@ class UtilPixelRaster {
   }
 
   /// Filled ellipse as vertical spans computed by solving y for each x column.
-  static Iterable<Point<int>> _filledEllipseSpans(
+  static Iterable<ModelVector> _filledEllipseSpans(
     int cx,
     int cy,
     int a,
@@ -433,7 +437,7 @@ class UtilPixelRaster {
       final double t = 1.0 - (x * x) / (a * a);
       final int y = t <= 0 ? 0 : (b * sqrt(t)).round();
       for (int yy = -y; yy <= y; yy++) {
-        yield Point<int>(cx + x, cy + yy);
+        yield defaultModelVector.fromXY(cx + x, cy + yy);
       }
     }
   }
@@ -444,8 +448,8 @@ class UtilPixelRaster {
   /// [stroke] thickens the outline by drawing additional perimeters outward.
   static ModelCanvas drawOvalCorners({
     required ModelCanvas canvas,
-    required Point<int> p1,
-    required Point<int> p2,
+    required ModelVector p1,
+    required ModelVector p2,
     required String hexColor,
     bool fill = false,
     int stroke = 1,
@@ -473,13 +477,13 @@ class UtilPixelRaster {
     final int b = h ~/ 2; // radius y
 
     if (fill) {
-      for (final Point<int> p in _filledEllipseSpans(cx, cy, a, b)) {
+      for (final ModelVector p in _filledEllipseSpans(cx, cy, a, b)) {
         if (_inside(canvas, p.x, p.y)) {
           _setPx(acc, p.x, p.y, hex);
         }
       }
       for (int t = 0; t < stroke - 1; t++) {
-        for (final Point<int> p in _midpointEllipse(
+        for (final ModelVector p in _midpointEllipse(
           cx,
           cy,
           a + t + 1,
@@ -492,7 +496,7 @@ class UtilPixelRaster {
       }
     } else {
       for (int t = 0; t < stroke; t++) {
-        for (final Point<int> p in _midpointEllipse(cx, cy, a + t, b + t)) {
+        for (final ModelVector p in _midpointEllipse(cx, cy, a + t, b + t)) {
           if (_inside(canvas, p.x, p.y)) {
             _setPx(acc, p.x, p.y, hex);
           }
@@ -506,8 +510,8 @@ class UtilPixelRaster {
   /// Convenience to preview circle from two points: center & edge.
   static List<ModelPixel> rasterCirclePixels({
     required ModelCanvas canvas,
-    required Point<int> center,
-    required Point<int> edge,
+    required ModelVector center,
+    required ModelVector edge,
     required String hexColor,
     bool fill = false,
     int stroke = 1,
@@ -527,8 +531,8 @@ class UtilPixelRaster {
   /// Convenience to preview oval from two corners.
   static List<ModelPixel> rasterOvalPixels({
     required ModelCanvas canvas,
-    required Point<int> p1,
-    required Point<int> p2,
+    required ModelVector p1,
+    required ModelVector p2,
     required String hexColor,
     bool fill = false,
     int stroke = 1,
@@ -543,4 +547,20 @@ class UtilPixelRaster {
     );
     return next.pixels.values.toList();
   }
+
+  static int getX(ModelVector modelVector) => modelVector.dx.round();
+  static int getY(ModelVector modelVector) => modelVector.dy.round();
+  static String keyFromModelVector(ModelVector modelVector) =>
+      '${modelVector.dx},${modelVector.dy}';
+  static ModelVector copyWithInts({
+    required ModelVector modelVector,
+    int? x,
+    int? y,
+  }) => ModelVector(
+    (x ?? modelVector.dx).toDouble(),
+    (y ?? modelVector.dy).toDouble(),
+  );
+
+  static ModelVector fromXY(int x, int y) =>
+      ModelVector(x.toDouble(), y.toDouble());
 }

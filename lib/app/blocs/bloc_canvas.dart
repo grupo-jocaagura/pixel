@@ -8,6 +8,7 @@ import '../../domain/models/model_canvas.dart';
 import '../../domain/models/model_pixel.dart';
 import '../../domain/usecases/canvas/canvas_usecases.dart';
 import '../../shared/util_color.dart';
+import '../utils/model_vector_bridge.dart';
 import '../utils/util_pixel_raster.dart';
 
 /// BLoC encargado de la lógica de un canvas reactivo consumiendo la fachada
@@ -385,7 +386,7 @@ class BlocCanvas extends BlocModule {
     _pushStateForUndo();
     _blocCanvas.value = UtilPixelRaster.drawCircle(
       canvas: canvas,
-      center: Point<int>(center.x, center.y),
+      center: defaultModelVector.fromXY(center.x, center.y),
       radius: sqrt(
         pow(edge.x - center.x, 2) + pow(edge.y - center.y, 2),
       ).round(),
@@ -408,8 +409,8 @@ class BlocCanvas extends BlocModule {
     _pushStateForUndo();
     _blocCanvas.value = UtilPixelRaster.drawOvalCorners(
       canvas: canvas,
-      p1: Point<int>(p1.x, p1.y),
-      p2: Point<int>(p2.x, p2.y),
+      p1: defaultModelVector.fromXY(p1.x, p1.y),
+      p2: defaultModelVector.fromXY(p2.x, p2.y),
       hexColor: UtilColor.normalizeHex(p1.hexColor),
       fill: fill,
       stroke: stroke,

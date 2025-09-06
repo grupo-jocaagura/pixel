@@ -1,10 +1,9 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 import 'package:text_responsive/text_responsive.dart';
 
 import '../../../app/blocs/bloc_canvas.dart';
+import '../../../app/utils/model_vector_bridge.dart';
 
 class CoordEditorWidget extends StatelessWidget {
   const CoordEditorWidget({
@@ -16,8 +15,8 @@ class CoordEditorWidget extends StatelessWidget {
   });
 
   final String label;
-  final Point<int>? value;
-  final void Function(Point<int>?) setValue;
+  final ModelVector? value;
+  final void Function(ModelVector?) setValue;
   final BlocCanvas blocCanvas;
 
   String? validateX(String? v) {
@@ -76,7 +75,7 @@ class CoordEditorWidget extends StatelessWidget {
                 return;
               }
               setValue(
-                Point<int>(
+                defaultModelVector.fromXY(
                   x.clamp(0, blocCanvas.canvas.width - 1),
                   value?.y ?? 0,
                 ),
@@ -88,7 +87,7 @@ class CoordEditorWidget extends StatelessWidget {
                 return;
               }
               setValue(
-                Point<int>(
+                defaultModelVector.fromXY(
                   x.clamp(0, blocCanvas.canvas.width - 1),
                   value?.y ?? 0,
                 ),
@@ -113,7 +112,7 @@ class CoordEditorWidget extends StatelessWidget {
                 return;
               }
               setValue(
-                Point<int>(
+                defaultModelVector.fromXY(
                   value?.x ?? 0,
                   y.clamp(0, blocCanvas.canvas.height - 1),
                 ),
@@ -125,7 +124,7 @@ class CoordEditorWidget extends StatelessWidget {
                 return;
               }
               setValue(
-                Point<int>(
+                defaultModelVector.fromXY(
                   value?.x ?? 0,
                   y.clamp(0, blocCanvas.canvas.height - 1),
                 ),

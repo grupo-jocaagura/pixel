@@ -1,9 +1,8 @@
-// ui/widgets/interactive_grid_line_widget.dart
-import 'dart:math';
-
 import 'package:flutter/material.dart';
+import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 import '../../app/blocs/bloc_canvas.dart';
+import '../../app/utils/model_vector_bridge.dart';
 import '../../domain/models/model_canvas.dart';
 import '../../domain/models/model_pixel.dart';
 import '../painters/interactive_grid_line_painter.dart';
@@ -27,12 +26,12 @@ class InteractiveGridLineWidget extends StatefulWidget {
   final BlocCanvas blocCanvas;
   final bool showCoordinates;
   final Color coordinateColor;
-  final Point<int>? origin;
-  final Point<int>? destiny;
+  final ModelVector? origin;
+  final ModelVector? destiny;
   final Iterable<ModelPixel>? previewPixels;
   final GridFit fit;
   final double minCellDp;
-  final ValueChanged<Point<int>> onCellTap;
+  final ValueChanged<ModelVector> onCellTap;
 
   @override
   State<InteractiveGridLineWidget> createState() =>
@@ -92,7 +91,7 @@ class _InteractiveGridLineWidgetState extends State<InteractiveGridLineWidget> {
                 final int x = (p.dx / cell).floor();
                 final int y = (p.dy / cell).floor();
                 if (x >= 0 && y >= 0 && x < c.width && y < c.height) {
-                  widget.onCellTap(Point<int>(x, y));
+                  widget.onCellTap(defaultModelVector.fromXY(x, y));
                 }
               },
               child: CustomPaint(

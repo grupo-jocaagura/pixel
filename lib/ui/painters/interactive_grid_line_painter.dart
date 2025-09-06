@@ -2,7 +2,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
+import '../../app/utils/model_vector_bridge.dart';
 import '../../domain/models/model_canvas.dart';
 import '../../domain/models/model_pixel.dart';
 import '../../shared/util_color.dart';
@@ -32,8 +34,8 @@ class InteractiveGridLinePainter extends CustomPainter {
   final bool showGrid;
   final Color? coordinateColor;
   final Iterable<ModelPixel>? previewPixels;
-  final Point<int>? origin;
-  final Point<int>? destiny;
+  final ModelVector? origin;
+  final ModelVector? destiny;
 
   /// Optional DPR to snap grid lines to physical pixels.
   final double? devicePixelRatio;

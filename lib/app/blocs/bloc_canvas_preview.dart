@@ -1,10 +1,9 @@
-import 'dart:math';
-
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 import '../../domain/models/model_canvas.dart';
 import '../../domain/models/model_pixel.dart';
 import '../../domain/states/state_preview.dart';
+import '../utils/model_vector_bridge.dart';
 import '../utils/util_pixel_raster.dart';
 import 'bloc_canvas.dart';
 
@@ -74,18 +73,18 @@ class BlocCanvasPreview extends BlocModule {
     // preview vacío ya emitido
   }
 
-  void setOrigin(Point<int>? p, ModelCanvas canvas, String hex) {
+  void setOrigin(ModelVector? p, ModelCanvas canvas, String hex) {
     _emit(state.copyWith(origin: p));
     _recompute(canvas, hex);
   }
 
-  void setDestiny(Point<int>? p, ModelCanvas canvas, String hex) {
+  void setDestiny(ModelVector? p, ModelCanvas canvas, String hex) {
     _emit(state.copyWith(destiny: p));
     _recompute(canvas, hex);
   }
 
   /// Convenience for tap: first sets origin, then destiny, then cycles.
-  void tapCell(Point<int> cell, ModelCanvas canvas, String hex) {
+  void tapCell(ModelVector cell, ModelCanvas canvas, String hex) {
     if (state.origin == null) {
       setOrigin(cell, canvas, hex);
     } else if (state.destiny == null) {
@@ -118,11 +117,7 @@ class BlocCanvasPreview extends BlocModule {
       case DrawTool.line:
         pixels = UtilPixelRaster.rasterLinePixels(
           canvas: canvas,
-          origin: ModelPixel.fromCoord(
-            state.origin!.x,
-            state.origin!.y,
-            hexColor: hex,
-          ),
+          origin: ModelPixel(vector: state.origin!, hexColor: hex),
           destiny: ModelPixel.fromCoord(
             state.destiny!.x,
             state.destiny!.y,
@@ -153,8 +148,8 @@ class BlocCanvasPreview extends BlocModule {
       case DrawTool.circle:
         pixels = UtilPixelRaster.rasterCirclePixels(
           canvas: canvas,
-          center: Point<int>(state.origin!.x, state.origin!.y),
-          edge: Point<int>(state.destiny!.x, state.destiny!.y),
+          center: defaultModelVector.fromXY(state.origin!.x, state.origin!.y),
+          edge: defaultModelVector.fromXY(state.destiny!.x, state.destiny!.y),
           hexColor: hex,
           fill: state.fill,
           stroke: state.stroke,
@@ -164,8 +159,8 @@ class BlocCanvasPreview extends BlocModule {
       case DrawTool.oval:
         pixels = UtilPixelRaster.rasterOvalPixels(
           canvas: canvas,
-          p1: Point<int>(state.origin!.x, state.origin!.y),
-          p2: Point<int>(state.destiny!.x, state.destiny!.y),
+          p1: defaultModelVector.fromXY(state.origin!.x, state.origin!.y),
+          p2: defaultModelVector.fromXY(state.destiny!.x, state.destiny!.y),
           hexColor: hex,
           fill: state.fill,
           stroke: state.stroke,

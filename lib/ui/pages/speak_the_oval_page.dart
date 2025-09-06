@@ -1,6 +1,3 @@
-// ui/pages/speak_the_oval_page.dart
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
@@ -67,7 +64,7 @@ class SpeakTheOvalPage extends StatelessWidget {
                   origin: state.origin,
                   destiny: state.destiny,
                   previewPixels: state.previewPixels,
-                  onCellTap: (Point<int> cell) => previewBloc.tapCell(
+                  onCellTap: (ModelVector cell) => previewBloc.tapCell(
                     cell,
                     canvasBloc.canvas,
                     canvasBloc.selectedHex,
@@ -87,7 +84,7 @@ class SpeakTheOvalPage extends StatelessWidget {
                     CoordEditorWidget(
                       label: 'P1',
                       value: state.origin,
-                      setValue: (Point<int>? point) => previewBloc.setOrigin(
+                      setValue: (ModelVector? point) => previewBloc.setOrigin(
                         point,
                         canvasBloc.canvas,
                         canvasBloc.selectedHex,
@@ -97,7 +94,7 @@ class SpeakTheOvalPage extends StatelessWidget {
                     CoordEditorWidget(
                       label: 'P2',
                       value: state.destiny,
-                      setValue: (Point<int>? point) => previewBloc.setDestiny(
+                      setValue: (ModelVector? point) => previewBloc.setDestiny(
                         point,
                         canvasBloc.canvas,
                         canvasBloc.selectedHex,

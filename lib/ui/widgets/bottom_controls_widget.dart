@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 import 'package:text_responsive/text_responsive.dart';
@@ -22,11 +20,11 @@ class BottomControlsWidget extends StatelessWidget {
   });
 
   final BlocCanvas blocCanvas;
-  final Point<int>? origin;
-  final Point<int>? destiny;
+  final ModelVector? origin;
+  final ModelVector? destiny;
   final bool showCoords;
-  final ValueChanged<Point<int>?> onChangedOrigin;
-  final ValueChanged<Point<int>?> onChangedDestiny;
+  final ValueChanged<ModelVector?> onChangedOrigin;
+  final ValueChanged<ModelVector?> onChangedDestiny;
   final ValueChanged<bool> onToggleCoords;
   final VoidCallback onDraw;
 

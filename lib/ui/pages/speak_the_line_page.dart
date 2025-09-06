@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
@@ -66,7 +64,7 @@ class SpeakTheLinePage extends StatelessWidget {
                   origin: state.origin,
                   destiny: state.destiny,
                   previewPixels: state.previewPixels,
-                  onCellTap: (Point<int> cell) => previewBloc.tapCell(
+                  onCellTap: (ModelVector cell) => previewBloc.tapCell(
                     cell,
                     canvasBloc.canvas,
                     canvasBloc.selectedHex,
@@ -78,16 +76,17 @@ class SpeakTheLinePage extends StatelessWidget {
                 origin: state.origin,
                 destiny: state.destiny,
                 showCoords: state.showCoords,
-                onChangedOrigin: (Point<int>? point) => previewBloc.setOrigin(
+                onChangedOrigin: (ModelVector? point) => previewBloc.setOrigin(
                   point,
                   canvasBloc.canvas,
                   canvasBloc.selectedHex,
                 ),
-                onChangedDestiny: (Point<int>? point) => previewBloc.setDestiny(
-                  point,
-                  canvasBloc.canvas,
-                  canvasBloc.selectedHex,
-                ),
+                onChangedDestiny: (ModelVector? point) =>
+                    previewBloc.setDestiny(
+                      point,
+                      canvasBloc.canvas,
+                      canvasBloc.selectedHex,
+                    ),
                 onToggleCoords: (bool value) => previewBloc.setShowCoords(
                   value,
                   canvasBloc.canvas,

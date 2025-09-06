@@ -1,6 +1,4 @@
 // ui/pages/speak_the_circle_page.dart
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
@@ -54,7 +52,7 @@ class SpeakTheCirclePage extends StatelessWidget {
         stream: previewBloc.stateStream,
         initialData: previewBloc.state,
         builder: (_, AsyncSnapshot<StatePreview> snap) {
-          final StatePreview s = snap.data ?? previewBloc.state;
+          final StatePreview state = snap.data ?? previewBloc.state;
 
           return Column(
             children: <Widget>[
@@ -62,12 +60,12 @@ class SpeakTheCirclePage extends StatelessWidget {
                 child: InteractiveGridLineWidget(
                   fit: GridFit.width,
                   blocCanvas: canvasBloc,
-                  showCoordinates: s.showCoords,
+                  showCoordinates: state.showCoords,
                   coordinateColor: canvasBloc.selectedColor,
-                  origin: s.origin,
-                  destiny: s.destiny,
-                  previewPixels: s.previewPixels,
-                  onCellTap: (Point<int> cell) => previewBloc.tapCell(
+                  origin: state.origin,
+                  destiny: state.destiny,
+                  previewPixels: state.previewPixels,
+                  onCellTap: (ModelVector cell) => previewBloc.tapCell(
                     cell,
                     canvasBloc.canvas,
                     canvasBloc.selectedHex,
@@ -77,7 +75,7 @@ class SpeakTheCirclePage extends StatelessWidget {
               PreviewControlsWidget(
                 canvasBloc: canvasBloc,
                 previewBloc: previewBloc,
-                state: s,
+                state: state,
                 applyLabel: 'Dibujar círculo',
                 applyIcon: Icons.circle_outlined,
                 coordinatesEditor: Wrap(
@@ -86,9 +84,9 @@ class SpeakTheCirclePage extends StatelessWidget {
                   children: <Widget>[
                     CoordEditorWidget(
                       label: 'Centro',
-                      value: s.origin,
-                      setValue: (Point<int>? p) => previewBloc.setOrigin(
-                        p,
+                      value: state.origin,
+                      setValue: (ModelVector? point) => previewBloc.setOrigin(
+                        point,
                         canvasBloc.canvas,
                         canvasBloc.selectedHex,
                       ),
@@ -96,9 +94,9 @@ class SpeakTheCirclePage extends StatelessWidget {
                     ),
                     CoordEditorWidget(
                       label: 'Borde',
-                      value: s.destiny,
-                      setValue: (Point<int>? p) => previewBloc.setDestiny(
-                        p,
+                      value: state.destiny,
+                      setValue: (ModelVector? point) => previewBloc.setDestiny(
+                        point,
                         canvasBloc.canvas,
                         canvasBloc.selectedHex,
                       ),
