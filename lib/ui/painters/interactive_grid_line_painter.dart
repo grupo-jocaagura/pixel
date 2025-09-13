@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
-import '../../app/utils/model_vector_bridge.dart';
 import '../../domain/models/model_canvas.dart';
 import '../../domain/models/model_pixel.dart';
 import '../../shared/util_color.dart';

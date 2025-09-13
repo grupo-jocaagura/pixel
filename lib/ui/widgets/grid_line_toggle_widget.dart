@@ -22,7 +22,7 @@ class GridLineToggle extends StatelessWidget {
             const SizedBox(width: 4),
             Switch(
               value: isOn,
-              activeColor: blocCanvas.gridLineColor,
+              activeThumbColor: blocCanvas.gridLineColor,
               onChanged: (_) => blocCanvas.toggleGridLineColor(),
             ),
           ],
