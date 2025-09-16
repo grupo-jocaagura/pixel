@@ -27,7 +27,7 @@ Aplicación de ejemplo en Flutter que acompaña el taller **"Del Pixel al Movimi
 1. Clona este repositorio:
 
    ```bash
-   git clone https://github.com/tu-usuario/pixel-al-movimiento.git
+   git clone https://github.com/grupo-jocaagura/pixel.git
    ```
 2. Entra al directorio del proyecto:
 
