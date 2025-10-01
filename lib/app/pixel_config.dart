@@ -70,4 +70,17 @@ class PixelConfig {
       },
     );
   }
+
+  AppConfig byMode(AppMode mode) {
+    switch (mode) {
+      case AppMode.prod:
+        // TODO(albert): implementar prod(); por ahora usa dev()
+        return dev();
+      case AppMode.qa:
+        // TODO(albert): implementar qa(); por ahora usa dev()
+        return dev();
+      case AppMode.dev:
+        return dev();
+    }
+  }
 }
