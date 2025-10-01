@@ -16,7 +16,7 @@ final List<OnboardingStep> onboardingSteps = <OnboardingStep>[
   OnboardingStep(
     title: 'Probando',
     autoAdvanceAfter: const Duration(seconds: 5),
-    description: 'Probando funcion del onboarding, simulando carga del canvas',
+    description: 'Probando funcion del onboarding, simulando carga del tema',
     onEnter: () async {
       return Right<ErrorItem, Unit>(Unit.value);
     },
