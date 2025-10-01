@@ -59,4 +59,5 @@ class DefaultFirebaseOptions {
     projectId: 'pixel-prod-1b8ce',
     storageBucket: 'pixel-prod-1b8ce.firebasestorage.app',
   );
+
 }
