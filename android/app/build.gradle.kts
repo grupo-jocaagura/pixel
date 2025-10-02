@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -7,55 +10,76 @@ plugins {
 
 android {
     namespace = "com.jocaagura.pixel"
+
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = JavaVersion.VERSION_11.toString() }
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
 
     defaultConfig {
         applicationId = "com.jocaagura.pixel"
         minSdk = maxOf(23, flutter.minSdkVersion)
         targetSdk = flutter.targetSdkVersion
 
-
-        val vc = project.findProperty("VERSION_CODE")?.toString()?.toInt() ?: 1
+        val vc = project.findProperty("VERSION_CODE")?.toString()?.toInt() ?: flutter.versionCode
         val vn = project.findProperty("VERSION_NAME")?.toString() ?: flutter.versionName
         versionCode = vc
         versionName = vn
     }
 
-    buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("debug")
-            isMinifyEnabled = false
-            isShrinkResources = false
-        }
-        debug {
-            // puedes añadir applicationIdSuffix, por ejemplo: ".debug"
+    signingConfigs {
+        create("release") {
+            val kpFile = file("key.properties")
+            if (kpFile.exists()) {
+                val kp = Properties().apply { load(FileInputStream(kpFile)) }
+                storeFile = file(kp.getProperty("storeFile"))
+                storePassword = kp.getProperty("storePassword")
+                keyAlias = kp.getProperty("keyAlias")
+                keyPassword = kp.getProperty("keyPassword")
+            }
         }
     }
 
-     flavorDimensions += "env"
-     productFlavors {
-         create("dev") {
-             dimension = "env"
-             applicationId = "com.jocaagura.pixel.dev"
-             versionNameSuffix = "-dev"
-         }
-         create("qa") {
-             dimension = "env"
-             applicationId = "com.jocaagura.pixel.qa"
-             versionNameSuffix = "-qa"
-         }
-         create("prod") {
-             dimension = "env"
-             applicationId = "com.jocaagura.pixel"
-         }
-     }
+    buildTypes {
+        getByName("debug") {
+            isDebuggable = true
+        }
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            // Si usas reglas personalizadas:
+            // proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+
+    flavorDimensions += "env"
+    productFlavors {
+        create("dev") {
+            dimension = "env"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            resValue("string", "app_name", "Pixel (DEV)")
+        }
+        create("qa") {
+            dimension = "env"
+            applicationIdSuffix = ".qa"
+            versionNameSuffix = "-qa"
+            resValue("string", "app_name", "Pixel (QA)")
+        }
+        create("prod") {
+            dimension = "env"
+            resValue("string", "app_name", "Pixel")
+        }
+    }
 }
 
-flutter { source = "../.." }
+flutter {
+    source = "../.."
+}

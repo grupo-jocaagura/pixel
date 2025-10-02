@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "970409172645",
+    "project_id": "pixel-prod-1b8ce",
+    "storage_bucket": "pixel-prod-1b8ce.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:970409172645:android:4c2602f64c7d5dafd0774c",
+        "android_client_info": {
+          "package_name": "com.jocaagura.pixel"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAApvTA8L-Y_q0UDpnG2WFBKtl1kpYzSQc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
