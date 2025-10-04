@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 import '../data/gateways/gateway_canvas_impl.dart';
@@ -40,9 +41,43 @@ class PixelConfig {
   void _init() {}
 
   AppConfig dev() {
-    final GatewayCanvas gatewayCanvas = GatewayCanvasImpl(
-      FakeServiceWsDatabase(),
+    return _commonConfig(
+      serviceWsDatabase: FakeServiceWsDatabase(),
+      serviceSession: FakeServiceSession(),
     );
+  }
+
+  AppConfig qa() {
+    return _commonConfig(
+      serviceWsDatabase:
+          FakeServiceWsDatabase(), // reemplazar por los respectivos servicios
+      serviceSession:
+          FakeServiceSession(), // reemplazar por los respectivos servicios
+    );
+  }
+
+  AppConfig prod() {
+    return _commonConfig(
+      serviceWsDatabase:
+          FakeServiceWsDatabase(), // reemplazar por los respectivos servicios
+      serviceSession:
+          FakeServiceSession(), // reemplazar por los respectivos servicios
+    );
+  }
+
+  AppConfig _commonConfig({
+    required ServiceWsDatabase<Map<String, dynamic>> serviceWsDatabase,
+    required ServiceSession serviceSession,
+  }) {
+    final RepositoryAuth repository = RepositoryAuthImpl(
+      gateway: GatewayAuthImpl(serviceSession),
+    );
+
+    final BlocSession blocSession = BlocSession.fromRepository(
+      repository: repository,
+    );
+
+    final GatewayCanvas gatewayCanvas = GatewayCanvasImpl(serviceWsDatabase);
     final RepositoryCanvas repositoryCanvas = RepositoryCanvasImpl(
       gatewayCanvas,
     );
@@ -50,6 +85,12 @@ class PixelConfig {
       usecases: CanvasUsecases.fromRepo(repositoryCanvas),
       blocLoading: blocLoading,
     );
+
+    final Map<String, BlocModule> blocModuleList = <String, BlocModule>{
+      BlocCanvas.name: blocCanvas,
+      BlocCanvasPreview.name: BlocCanvasPreview(),
+      BlocSession.name: blocSession,
+    };
 
     return AppConfig(
       blocLoading: blocLoading,
@@ -64,21 +105,18 @@ class PixelConfig {
       blocResponsive: BlocResponsive(),
       blocOnboarding: BlocOnboarding(),
       pageManager: PageManager(initial: navStackModel),
-      blocModuleList: <String, BlocModule>{
-        BlocCanvas.name: blocCanvas,
-        BlocCanvasPreview.name: BlocCanvasPreview(),
-      },
+      blocModuleList: blocModuleList,
     );
   }
 
   AppConfig byMode(AppMode mode) {
     switch (mode) {
       case AppMode.prod:
-        // TODO(albert): implementar prod(); por ahora usa dev()
-        return dev();
+        debugPrint('// TODO(albert): implementar prod(); por ahora usa dev()');
+        return prod();
       case AppMode.qa:
-        // TODO(albert): implementar qa(); por ahora usa dev()
-        return dev();
+        debugPrint('// TODO(albert): implementar qa(); por ahora usa dev()');
+        return qa();
       case AppMode.dev:
         return dev();
     }

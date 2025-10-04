@@ -18,7 +18,7 @@ class Env {
   static const String sentryDsn = String.fromEnvironment('SENTRY_DSN');
   static const String firebaseEnv = String.fromEnvironment(
     'FIREBASE_ENV',
-    defaultValue: 'prod',
+    defaultValue: 'dev',
   );
 
   static AppMode get mode {
