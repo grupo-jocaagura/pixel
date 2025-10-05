@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 import '../data/gateways/gateway_canvas_impl.dart';
@@ -114,10 +113,8 @@ class PixelConfig {
   AppConfig byMode(AppMode mode) {
     switch (mode) {
       case AppMode.prod:
-        debugPrint('// TODO(albert): implementar prod(); por ahora usa dev()');
         return prod();
       case AppMode.qa:
-        debugPrint('// TODO(albert): implementar qa(); por ahora usa dev()');
         return qa();
       case AppMode.dev:
         return dev();

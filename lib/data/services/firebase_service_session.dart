@@ -41,15 +41,23 @@ class FirebaseServiceSession implements ServiceSession {
     if (_googleInitialized) {
       return;
     }
+
     final bool isWindows =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
-    final bool needsClientId = kIsWeb || isWindows;
 
-    await googlesi.GoogleSignIn.instance.initialize(
-      clientId: needsClientId ? clientId : null,
-      // serverClientId / hostedDomain si aplica
-    );
-    _googleInitialized = true;
+    if (kIsWeb || isWindows) {
+      _googleInitialized = true;
+      return;
+    }
+
+    try {
+      await googlesi.GoogleSignIn.instance.initialize(
+        clientId: (clientId != null && clientId.isNotEmpty) ? clientId : null,
+      );
+      _googleInitialized = true;
+    } catch (e) {
+      _googleInitialized = true;
+    }
   }
 
   void _wireAuthStream() {
@@ -57,7 +65,7 @@ class FirebaseServiceSession implements ServiceSession {
       if (_disposed) {
         return;
       }
-      // Debounce con la versión de jocaagura: void Function() → envolvemos async inmediatamente.
+
       _debouncer(() {
         (() async {
           if (u == null) {
@@ -142,26 +150,72 @@ class FirebaseServiceSession implements ServiceSession {
   @override
   Future<Map<String, dynamic>> logInWithGoogle() async {
     _checkDisposed();
-    // API nueva del plugin: authenticate() retorna cuenta con tokens iniciales.
-    final googlesi.GoogleSignInAccount account = await googlesi
-        .GoogleSignIn
-        .instance
-        .authenticate();
-    final googlesi.GoogleSignInAuthentication authz = account.authentication;
-    final String? idToken = authz.idToken;
 
-    if (idToken == null || idToken.isEmpty) {
-      throw StateError('Google Sign-In did not return an idToken');
-    }
+    final bool isWindows =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+    final bool isMacOS =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
+    final bool isLinux =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
 
-    final fb.OAuthCredential cred = fb.GoogleAuthProvider.credential(
-      idToken: idToken,
-    );
-    final fb.UserCredential c = await _auth.signInWithCredential(cred);
-    final String token = Utils.getStringFromDynamic(await c.user!.getIdToken());
-    final Map<String, dynamic> user = _userToJson(c.user!, token);
-    _authCtrl.add(user);
-    return user;
+    try {
+      // ---------- WEB ----------
+      if (kIsWeb) {
+        final fb.GoogleAuthProvider provider = fb.GoogleAuthProvider()
+          ..setCustomParameters(<String, String>{'prompt': 'select_account'});
+
+        final fb.UserCredential c = await _auth.signInWithPopup(provider);
+        final fb.User? u = c.user;
+
+        final String token = Utils.getStringFromDynamic(await u!.getIdToken());
+
+        final Map<String, dynamic> user = _userToJson(u, token);
+        _authCtrl.add(user);
+        return user;
+      }
+
+      // ---------- DESKTOP (Windows/macOS/Linux) ----------
+      if (isWindows || isMacOS || isLinux) {
+        final fb.GoogleAuthProvider provider = fb.GoogleAuthProvider()
+          ..setCustomParameters(<String, String>{'prompt': 'select_account'});
+
+        final fb.UserCredential c = await _auth.signInWithProvider(provider);
+        final fb.User? u = c.user;
+
+        final String token = Utils.getStringFromDynamic(await u!.getIdToken());
+
+        final Map<String, dynamic> user = _userToJson(u, token);
+        _authCtrl.add(user);
+        return user;
+      }
+
+      // ---------- ANDROID / iOS ----------
+      final googlesi.GoogleSignInAccount account = await googlesi
+          .GoogleSignIn
+          .instance
+          .authenticate();
+
+      final googlesi.GoogleSignInAuthentication authz = account.authentication;
+      final String? idToken = authz.idToken;
+
+      if (idToken == null || idToken.isEmpty) {
+        throw StateError('Google Sign-In did not return an idToken');
+      }
+
+      final fb.OAuthCredential cred = fb.GoogleAuthProvider.credential(
+        idToken: idToken,
+      );
+      final fb.UserCredential c = await _auth.signInWithCredential(cred);
+      final fb.User? u = c.user;
+
+      final String token = Utils.getStringFromDynamic(await u!.getIdToken());
+
+      final Map<String, dynamic> user = _userToJson(u, token);
+      _authCtrl.add(user);
+      return user;
+    } catch (e) {
+      rethrow;
+    } finally {}
   }
 
   @override
