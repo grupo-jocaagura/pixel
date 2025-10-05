@@ -6,14 +6,26 @@ import '../env.dart';
 import '../pixel_config.dart';
 
 Future<void> initFirebaseIfNeeded() async {
-  if (Env.mode == AppMode.prod) {
-    await Firebase.initializeApp(
-      options: fprod.DefaultFirebaseOptions.currentPlatform,
-    );
+  if (Env.mode == AppMode.dev) {
+    return;
   }
-  if (Env.mode == AppMode.qa) {
-    await Firebase.initializeApp(
-      options: fqa.DefaultFirebaseOptions.currentPlatform,
-    );
+
+  if (Firebase.apps.isNotEmpty) {
+    return;
+  }
+
+  switch (Env.mode) {
+    case AppMode.qa:
+      await Firebase.initializeApp(
+        options: fqa.DefaultFirebaseOptions.currentPlatform,
+      );
+      break;
+    case AppMode.prod:
+      await Firebase.initializeApp(
+        options: fprod.DefaultFirebaseOptions.currentPlatform,
+      );
+      break;
+    case AppMode.dev:
+      break;
   }
 }

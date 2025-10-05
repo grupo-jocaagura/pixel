@@ -3,34 +3,20 @@ import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 import '../data/gateways/gateway_canvas_impl.dart';
 import '../data/repositories/repository_canvas_impl.dart';
+import '../data/services/firebase_service_session.dart';
 import '../domain/gateways/gateway_canvas.dart';
 import '../domain/repositories/repository_canvas.dart';
 import '../domain/usecases/canvas/canvas_usecases.dart';
+import '../ui/pages/home_page.dart';
 import '../ui/pages/pages.dart';
+import '../ui/pages/session/login_page.dart';
 import 'blocs/bloc_canvas.dart';
 import 'blocs/bloc_canvas_preview.dart';
+import 'env.dart';
 
 enum AppMode { dev, qa, prod }
 
 final PixelConfig pixelConfig = PixelConfig();
-final List<OnboardingStep> onboardingSteps = <OnboardingStep>[
-  OnboardingStep(
-    title: 'Probando',
-    autoAdvanceAfter: const Duration(seconds: 5),
-    description: 'Probando funcion del onboarding, simulando carga del tema',
-    onEnter: () async {
-      return Right<ErrorItem, Unit>(Unit.value);
-    },
-  ),
-  OnboardingStep(
-    title: 'Probando',
-    autoAdvanceAfter: const Duration(seconds: 3),
-    description: 'Probando funcion del onboarding, simulando carga del canvas',
-    onEnter: () async {
-      return Right<ErrorItem, Unit>(Unit.value);
-    },
-  ),
-];
 
 class PixelConfig {
   PixelConfig() {
@@ -40,30 +26,8 @@ class PixelConfig {
   final BlocLoading blocLoading = BlocLoading();
   void _init() {}
 
-  AppConfig dev() {
-    return _commonConfig(
-      serviceWsDatabase: FakeServiceWsDatabase(),
-      serviceSession: FakeServiceSession(),
-    );
-  }
-
-  AppConfig qa() {
-    return _commonConfig(
-      serviceWsDatabase:
-          FakeServiceWsDatabase(), // reemplazar por los respectivos servicios
-      serviceSession:
-          FakeServiceSession(), // reemplazar por los respectivos servicios
-    );
-  }
-
-  AppConfig prod() {
-    return _commonConfig(
-      serviceWsDatabase:
-          FakeServiceWsDatabase(), // reemplazar por los respectivos servicios
-      serviceSession:
-          FakeServiceSession(), // reemplazar por los respectivos servicios
-    );
-  }
+  static const int kAuthRouteDebounceMs = 120;
+  static const int kAuthRefreshDebounceMs = 900;
 
   AppConfig _commonConfig({
     required ServiceWsDatabase<Map<String, dynamic>> serviceWsDatabase,
@@ -91,8 +55,7 @@ class PixelConfig {
       BlocCanvasPreview.name: BlocCanvasPreview(),
       BlocSession.name: blocSession,
     };
-
-    return AppConfig(
+    final AppConfig app = AppConfig(
       blocLoading: blocLoading,
       blocTheme: BlocTheme(
         themeUsecases: ThemeUsecases.fromRepo(
@@ -107,8 +70,47 @@ class PixelConfig {
       pageManager: PageManager(initial: navStackModel),
       blocModuleList: blocModuleList,
     );
+    _installAuthNavigatorSync(app.pageManager, blocSession);
+
+    return app;
   }
 
+  void _installAuthNavigatorSync(
+    PageManager pageManager,
+    BlocSession blocSession, {
+    int debounceMs = kAuthRouteDebounceMs,
+  }) {
+    final Debouncer debouncer = Debouncer(milliseconds: debounceMs);
+
+    void reroute(SessionState state) {
+      debouncer(() {
+        final PageModel target = blocSession.isAuthenticated
+            ? HomePage.pageModel
+            : LoginPage.pageModel;
+
+        pageManager.pushDistinctTop(target);
+      });
+    }
+
+    reroute(blocSession.stateOrDefault);
+
+    blocSession.stream.listen(reroute);
+  }
+
+  AppConfig dev() => _commonConfig(
+    serviceWsDatabase: FakeServiceWsDatabase(),
+    serviceSession: FakeServiceSession(),
+  );
+
+  AppConfig qa() => _commonConfig(
+    serviceWsDatabase: FakeServiceWsDatabase(),
+    serviceSession: FirebaseServiceSession(googleClientId: Env.googleClientId),
+  );
+
+  AppConfig prod() => _commonConfig(
+    serviceWsDatabase: FakeServiceWsDatabase(),
+    serviceSession: FirebaseServiceSession(googleClientId: Env.googleClientId),
+  );
   AppConfig byMode(AppMode mode) {
     switch (mode) {
       case AppMode.prod:

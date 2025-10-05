@@ -20,31 +20,39 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ListView(
-        children: const <Widget>[
-          MenuTileWidget(
+        children: <Widget>[
+          const MenuTileWidget(
             label: 'Taller 1',
             description: 'Explicación del canvas y que es un pixel',
             page: SpeakTheCanvasPage.pageModel,
           ),
-          MenuTileWidget(
+          const MenuTileWidget(
             label: 'Taller 2',
             description: 'Explicación de la linea',
             page: SpeakTheLinePage.pageModel,
           ),
-          MenuTileWidget(
+          const MenuTileWidget(
             label: 'Taller 2',
             description: 'Explicación del Rectangulo',
             page: SpeakTheRectPage.pageModel,
           ),
-          MenuTileWidget(
+          const MenuTileWidget(
             label: 'Taller 2',
             description: 'Explicación del Circulo',
             page: SpeakTheCirclePage.pageModel,
           ),
-          MenuTileWidget(
+          const MenuTileWidget(
             label: 'Taller 2',
             description: 'Explicación del Ovalo',
             page: SpeakTheOvalPage.pageModel,
+          ),
+          ListTile(
+            title: const InlineTextWidget('Cerrar sesion'),
+            onTap: () {
+              context.appManager
+                  .requireModuleByKey<BlocSession>(BlocSession.name)
+                  .logOut();
+            },
           ),
         ],
       ),

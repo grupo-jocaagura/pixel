@@ -7,7 +7,8 @@ import 'app/pixel_config.dart';
 import 'ui/pages/pages.dart';
 import 'ui/pages/splash_screen_page.dart';
 
-void main() async {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   await initFirebaseIfNeeded();
   final AppConfig appCfg = pixelConfig.byMode(Env.mode);
   runApp(

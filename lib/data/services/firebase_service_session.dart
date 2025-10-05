@@ -14,12 +14,10 @@ import 'package:jocaaguraarchetype/jocaaguraarchetype.dart'
 class FirebaseServiceSession implements ServiceSession {
   FirebaseServiceSession({
     fb.FirebaseAuth? auth,
-    String?
-    googleClientId, // pásalo en Web/Windows via --dart-define=GOOGLE_CLIENT_ID
+    String? googleClientId,
     int authStateDebounceMs = 120,
     DateTime Function()? now,
   }) : _auth = auth ?? fb.FirebaseAuth.instance {
-    // --- inicializaciones de final en el cuerpo (late final) ---
     _now = now ?? () => DateTime.now().toUtc();
     _debouncer = Debouncer(milliseconds: authStateDebounceMs);
 
