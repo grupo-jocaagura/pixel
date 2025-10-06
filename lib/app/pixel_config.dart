@@ -3,6 +3,7 @@ import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 import '../data/gateways/gateway_canvas_impl.dart';
 import '../data/repositories/repository_canvas_impl.dart';
 import '../data/services/firebase_service_session.dart';
+import '../data/services/google_sheets/google_sheets_canvas_db.dart';
 import '../domain/gateways/gateway_canvas.dart';
 import '../domain/repositories/repository_canvas.dart';
 import '../domain/usecases/canvas/canvas_usecases.dart';
@@ -101,15 +102,40 @@ class PixelConfig {
     serviceSession: FakeServiceSession(),
   );
 
-  AppConfig qa() => _commonConfig(
-    serviceWsDatabase: FakeServiceWsDatabase(),
-    serviceSession: FirebaseServiceSession(googleClientId: Env.googleClientId),
-  );
+  AppConfig qa() {
+    final FirebaseServiceSession serviceSession = FirebaseServiceSession(
+      googleClientId: Env.googleClientId,
+    );
 
-  AppConfig prod() => _commonConfig(
-    serviceWsDatabase: FakeServiceWsDatabase(),
-    serviceSession: FirebaseServiceSession(googleClientId: Env.googleClientId),
-  );
+    final ServiceWsDatabase<Map<String, dynamic>> serviceWsDatabase =
+        GoogleSheetsCanvasDb(
+          tokenProvider: () => serviceSession.sheetsAccessToken(),
+          spreadsheetTitleOrId: 'Pixel - Mis Canvases',
+        );
+
+    return _commonConfig(
+      serviceWsDatabase: serviceWsDatabase,
+      serviceSession: serviceSession,
+    );
+  }
+
+  AppConfig prod() {
+    final FirebaseServiceSession serviceSession = FirebaseServiceSession(
+      googleClientId: Env.googleClientId,
+    );
+
+    final ServiceWsDatabase<Map<String, dynamic>> serviceWsDatabase =
+        GoogleSheetsCanvasDb(
+          tokenProvider: () => serviceSession.sheetsAccessToken(),
+          spreadsheetTitleOrId: 'Pixel - Mis Canvases',
+        );
+
+    return _commonConfig(
+      serviceWsDatabase: serviceWsDatabase,
+      serviceSession: serviceSession,
+    );
+  }
+
   AppConfig byMode(AppMode mode) {
     switch (mode) {
       case AppMode.prod:
