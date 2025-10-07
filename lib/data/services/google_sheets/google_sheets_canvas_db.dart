@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 
+import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:googleapis/sheets/v4.dart' as sheets;
 import 'package:http/http.dart' as http;
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
@@ -24,32 +27,49 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
     required SheetsTokenProvider tokenProvider,
     required String spreadsheetTitleOrId,
     bool isTitle = true,
+    String sheetTitle = 'pixel_canvases',
+    Duration pollInterval = const Duration(seconds: 5),
     http.Client? httpClient,
   }) : _tokenProvider = tokenProvider,
        _spreadsheetTitleOrId = spreadsheetTitleOrId,
        _isTitle = isTitle,
-       _http = httpClient ?? http.Client();
+       _kSheetTitle = sheetTitle,
+       _pollInterval = pollInterval,
+       _http = httpClient ?? http.Client() {
+    _startBackgroundSync();
+  }
 
+  // ---- Deps/config
   final SheetsTokenProvider _tokenProvider;
   final String _spreadsheetTitleOrId;
   final bool _isTitle;
+  final String _kSheetTitle;
+  final Duration _pollInterval;
   final http.Client _http;
+  // --- Cache de sesión (título -> spreadsheetId)
+  static final Map<String, String> _sessionSpreadsheetIdByTitle =
+      <String, String>{};
 
+  // --- Future en curso para evitar carreras por sesión/título
+  Future<String>? _resolvingSpreadsheetFuture;
+
+  // ---- APIs
+  sheets.SheetsApi _sheets() =>
+      sheets.SheetsApi(_AuthClient(_http, _tokenProvider));
+  drive.DriveApi _drive() => drive.DriveApi(_AuthClient(_http, _tokenProvider));
+
+  // ---- Estado interno
+  final Map<String, Map<String, Map<String, dynamic>>> _store =
+      <
+        String,
+        Map<String, Map<String, dynamic>>
+      >{}; // collection -> docId -> doc
+  final Map<String, BlocGeneral<List<Map<String, dynamic>>>> _collections =
+      <String, BlocGeneral<List<Map<String, dynamic>>>>{};
   String? _spreadsheetIdCache;
   bool _disposed = false;
+  Timer? _timer;
 
-  void _ensureNotDisposed() {
-    if (_disposed) {
-      throw StateError('GoogleSheetsCanvasDb disposed');
-    }
-  }
-
-  /// Crea un SheetsApi **con token fresco** para cada operación.
-  sheets.SheetsApi _sheets() {
-    return sheets.SheetsApi(_AuthClient(_http, _tokenProvider));
-  }
-
-  static const String _kSheetTitle = 'pixel_canvases';
   static const List<String> _kHeader = <String>[
     'id',
     'width',
@@ -58,31 +78,133 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
     'pixels',
   ];
 
-  Future<String> _ensureSpreadsheet() async {
-    if (_spreadsheetIdCache != null) {
-      return _spreadsheetIdCache!;
+  void _ensureNotDisposed() {
+    if (_disposed) {
+      throw StateError('GoogleSheetsCanvasDb disposed');
     }
+  }
+
+  // --------------------------- SYNC CORE ---------------------------
+
+  Future<String> _ensureSpreadsheet() {
+    if (_spreadsheetIdCache != null) {
+      return Future<String>.value(_spreadsheetIdCache!);
+    }
+
+    // 0) cache de sesión por título (solo si isTitle)
+    if (_isTitle) {
+      final String? cached =
+          _sessionSpreadsheetIdByTitle[_spreadsheetTitleOrId];
+      if (cached != null && cached.isNotEmpty) {
+        _spreadsheetIdCache = cached;
+        // No hace falta volver a crear header cada vez, pero es seguro:
+        return _ensureSheetAndHeader(cached).then((_) => cached);
+      }
+    }
+
+    // 1) coalescer (si ya alguien lo está resolviendo, reusar esa Future)
+    if (_resolvingSpreadsheetFuture != null) {
+      return _resolvingSpreadsheetFuture!;
+    }
+
+    // 2) resolver (list o create) una sola vez
+    _resolvingSpreadsheetFuture = _resolveSpreadsheetDoOnce().whenComplete(() {
+      _resolvingSpreadsheetFuture = null;
+    });
+
+    return _resolvingSpreadsheetFuture!;
+  }
+
+  Future<String> _resolveSpreadsheetDoOnce() async {
     if (!_isTitle) {
       _spreadsheetIdCache = _spreadsheetTitleOrId;
       await _ensureSheetAndHeader(_spreadsheetIdCache!);
       return _spreadsheetIdCache!;
     }
-    final sheets.Spreadsheet created = await _sheets().spreadsheets.create(
-      sheets.Spreadsheet.fromJson(<String, dynamic>{
-        'properties': <String, dynamic>{'title': _spreadsheetTitleOrId},
-        'sheets': <dynamic>[
-          <String, Map<String, String>>{
-            'properties': <String, String>{'title': _kSheetTitle},
-          },
-        ],
-      }),
-    );
-    _spreadsheetIdCache = created.spreadsheetId;
-    await _ensureHeader(_spreadsheetIdCache!);
+
+    final String title = _spreadsheetTitleOrId;
+
+    // Primero intenta listar (solo verás archivos de la app con drive.file)
+    try {
+      final drive.FileList list = await _drive().files.list(
+        q:
+            "name='${title.replaceAll("'", r"\'")}' and "
+            "mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
+        spaces: 'drive',
+        $fields: 'files(id,name)',
+        pageSize: 1,
+      );
+      if (list.files?.isNotEmpty ?? false) {
+        _spreadsheetIdCache = list.files!.first.id;
+        await _ensureSheetAndHeader(_spreadsheetIdCache!);
+        _sessionSpreadsheetIdByTitle[title] = _spreadsheetIdCache!;
+        return _spreadsheetIdCache!;
+      }
+    } catch (e) {
+      log('Error al crear $e');
+    }
+
+    // Si no existe, crea UNA sola vez (como estamos dentro del coalescer no habrá duplicados)
+    try {
+      final drive.File created = await _drive().files.create(
+        drive.File()
+          ..name = title
+          ..mimeType = 'application/vnd.google-apps.spreadsheet',
+      );
+      _spreadsheetIdCache = created.id;
+    } catch (e) {
+      final sheets.Spreadsheet created = await _sheets().spreadsheets.create(
+        sheets.Spreadsheet.fromJson(<String, dynamic>{
+          'properties': <String, dynamic>{'title': title},
+        }),
+      );
+      _spreadsheetIdCache = created.spreadsheetId;
+    }
+
+    await _ensureSheetAndHeader(_spreadsheetIdCache!);
+    _sessionSpreadsheetIdByTitle[title] = _spreadsheetIdCache!;
     return _spreadsheetIdCache!;
   }
 
   Future<void> _ensureSheetAndHeader(String spreadsheetId) async {
+    // asegurar hoja
+    try {
+      final sheets.Spreadsheet ss = await _sheets().spreadsheets.get(
+        spreadsheetId,
+      );
+      final bool exists = (ss.sheets ?? const <sheets.Sheet>[]).any(
+        (sheets.Sheet s) => s.properties?.title == _kSheetTitle,
+      );
+      if (!exists) {
+        await _sheets().spreadsheets.batchUpdate(
+          sheets.BatchUpdateSpreadsheetRequest.fromJson(<String, dynamic>{
+            'requests': <Map<String, Object?>>[
+              <String, Object?>{
+                'addSheet': <String, Object?>{
+                  'properties': <String, Object?>{'title': _kSheetTitle},
+                },
+              },
+            ],
+          }),
+          spreadsheetId,
+        );
+      }
+    } catch (e) {
+      await _sheets().spreadsheets.batchUpdate(
+        sheets.BatchUpdateSpreadsheetRequest.fromJson(<String, dynamic>{
+          'requests': <Map<String, Object?>>[
+            <String, Object?>{
+              'addSheet': <String, Object?>{
+                'properties': <String, Object?>{'title': _kSheetTitle},
+              },
+            },
+          ],
+        }),
+        spreadsheetId,
+      );
+    }
+
+    // asegurar header
     try {
       final sheets.ValueRange resp = await _sheets().spreadsheets.values.get(
         spreadsheetId,
@@ -92,26 +214,14 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
           (resp.values?.isNotEmpty ?? false) &&
           (resp.values!.first.length >= _kHeader.length);
       if (!ok) {
-        await _ensureHeader(spreadsheetId);
+        await _writeHeader(spreadsheetId);
       }
-    } catch (_) {
-      await _sheets().spreadsheets.batchUpdate(
-        sheets.BatchUpdateSpreadsheetRequest.fromJson(<dynamic, dynamic>{
-          'requests': <Map<String, Map<String, Map<String, String>>>>[
-            <String, Map<String, Map<String, String>>>{
-              'addSheet': <String, Map<String, String>>{
-                'properties': <String, String>{'title': _kSheetTitle},
-              },
-            },
-          ],
-        }),
-        spreadsheetId,
-      );
-      await _ensureHeader(spreadsheetId);
+    } catch (e) {
+      await _writeHeader(spreadsheetId);
     }
   }
 
-  Future<void> _ensureHeader(String spreadsheetId) {
+  Future<void> _writeHeader(String spreadsheetId) {
     return _sheets().spreadsheets.values.update(
       sheets.ValueRange(values: <List<Object?>>[_kHeader]),
       spreadsheetId,
@@ -119,6 +229,255 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
       valueInputOption: 'RAW',
     );
   }
+
+  // ------------------------ In-memory + emit ------------------------
+
+  BlocGeneral<List<Map<String, dynamic>>> _ensureCollectionBloc(
+    String collection,
+  ) {
+    return _collections.putIfAbsent(collection, () {
+      final BlocGeneral<List<Map<String, dynamic>>> bloc =
+          BlocGeneral<List<Map<String, dynamic>>>(<Map<String, dynamic>>[]);
+      // seed desde store si hubiera
+      final List<Map<String, dynamic>> seed =
+          _store[collection]?.values.toList() ?? <Map<String, dynamic>>[];
+      if (seed.isNotEmpty) {
+        bloc.value = List<Map<String, dynamic>>.unmodifiable(seed);
+      }
+      return bloc;
+    });
+  }
+
+  void _emitCollection(String collection) {
+    final Map<String, Map<String, dynamic>> docs = _store.putIfAbsent(
+      collection,
+      () => <String, Map<String, dynamic>>{},
+    );
+    final BlocGeneral<List<Map<String, dynamic>>> bloc = _ensureCollectionBloc(
+      collection,
+    );
+    bloc.value = List<Map<String, dynamic>>.unmodifiable(docs.values);
+  }
+
+  // ------------------------ CRUD (Local -> Sheets) -------------------
+
+  @override
+  Future<void> saveDocument({
+    required String collection,
+    required String docId,
+    required Map<String, dynamic> document,
+  }) async {
+    _ensureNotDisposed();
+    if (collection.isEmpty) {
+      throw ArgumentError('collection must not be empty');
+    }
+    if (docId.isEmpty) {
+      throw ArgumentError('docId must not be empty');
+    }
+
+    // 1) actualiza memoria y emite
+    final Map<String, Map<String, dynamic>> docs = _store.putIfAbsent(
+      collection,
+      () => <String, Map<String, dynamic>>{},
+    );
+    final Map<String, dynamic> toSave = <String, dynamic>{
+      ...document,
+      'id': docId,
+    };
+    docs[docId] = toSave;
+    _emitCollection(collection);
+
+    // 2) push a sheets (local wins)
+    final String ssId = await _ensureSpreadsheet();
+    await _ensureSheetAndHeader(ssId);
+    final int? row = await _findRowById(ssId, docId);
+    final List<Object?> rowValues = _toRow(toSave);
+
+    if (row == null) {
+      await _sheets().spreadsheets.values.append(
+        sheets.ValueRange(values: <List<Object?>>[rowValues]),
+        ssId,
+        _kSheetTitle,
+        valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
+      );
+    } else {
+      await _sheets().spreadsheets.values.update(
+        sheets.ValueRange(values: <List<Object?>>[rowValues]),
+        ssId,
+        '$_kSheetTitle!A$row:E$row',
+        valueInputOption: 'RAW',
+      );
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> readDocument({
+    required String collection,
+    required String docId,
+  }) async {
+    _ensureNotDisposed();
+    if (collection.isEmpty) {
+      throw ArgumentError('collection must not be empty');
+    }
+    if (docId.isEmpty) {
+      throw ArgumentError('docId must not be empty');
+    }
+
+    // 1) intenta memoria
+    final Map<String, dynamic>? local = _store[collection]?[docId];
+    if (local != null) {
+      return local;
+    }
+
+    // 2) pull puntual desde sheets
+    final String ssId = await _ensureSpreadsheet();
+    final int? rowNumber = await _findRowById(ssId, docId);
+    if (rowNumber == null) {
+      throw StateError('Document not found');
+    }
+
+    final sheets.ValueRange resp = await _sheets().spreadsheets.values.get(
+      ssId,
+      '$_kSheetTitle!A$rowNumber:E$rowNumber',
+    );
+    final List<List<Object?>> values =
+        resp.values?.map((List<Object?> e) => e.cast<Object?>()).toList() ??
+        <List<Object?>>[];
+    if (values.isEmpty) {
+      throw StateError('Row not found');
+    }
+
+    final Map<String, dynamic> doc = _fromRow(values.first);
+    _store.putIfAbsent(
+      collection,
+      () => <String, Map<String, dynamic>>{},
+    )[docId] = doc;
+    _emitCollection(collection);
+    return doc;
+  }
+
+  @override
+  Future<void> deleteDocument({
+    required String collection,
+    required String docId,
+  }) async {
+    _ensureNotDisposed();
+    if (collection.isEmpty) {
+      throw ArgumentError('collection must not be empty');
+    }
+    if (docId.isEmpty) {
+      throw ArgumentError('docId must not be empty');
+    }
+
+    // 1) borra local y emite
+    _store[collection]?.remove(docId);
+    _emitCollection(collection);
+
+    // 2) borra en sheets
+    final String ssId = await _ensureSpreadsheet();
+    final int? rowNumber = await _findRowById(ssId, docId);
+    if (rowNumber == null) {
+      return;
+    }
+
+    final sheets.Spreadsheet ss = await _sheets().spreadsheets.get(ssId);
+    final sheets.Sheet sheet = ss.sheets!.firstWhere(
+      (sheets.Sheet s) => s.properties?.title == _kSheetTitle,
+      orElse: () => throw StateError('Sheet $_kSheetTitle not found'),
+    );
+    final int r0 = rowNumber - 1;
+    await _sheets().spreadsheets.batchUpdate(
+      sheets.BatchUpdateSpreadsheetRequest.fromJson(<String, dynamic>{
+        'requests': <Map<String, Object?>>[
+          <String, Object?>{
+            'deleteDimension': <String, Object?>{
+              'range': <String, Object?>{
+                'sheetId': sheet.properties!.sheetId,
+                'dimension': 'ROWS',
+                'startIndex': r0,
+                'endIndex': r0 + 1,
+              },
+            },
+          },
+        ],
+      }),
+      ssId,
+    );
+  }
+
+  // ------------------------ Streams (desde BlocGeneral) ------------------------
+
+  @override
+  Stream<Map<String, dynamic>> documentStream({
+    required String collection,
+    required String docId,
+  }) {
+    _ensureNotDisposed();
+    if (collection.isEmpty) {
+      throw ArgumentError('collection must not be empty');
+    }
+    if (docId.isEmpty) {
+      throw ArgumentError('docId must not be empty');
+    }
+
+    final BlocGeneral<List<Map<String, dynamic>>> bloc = _ensureCollectionBloc(
+      collection,
+    );
+    // Stream derivado: filtra y entrega solo el docId pedido
+    final StreamController<Map<String, dynamic>> ctrl =
+        StreamController<Map<String, dynamic>>.broadcast();
+
+    // seed si existe
+    final Map<String, dynamic>? seed = _store[collection]?[docId];
+    if (seed != null) {
+      ctrl.add(seed);
+    }
+
+    // suscripción reactiva (usar funciones nombradas si deseas remover luego)
+    final String key =
+        'doc:$collection/$docId#${DateTime.now().microsecondsSinceEpoch}';
+    bloc.addFunctionToProcessTValueOnStream(key, (
+      List<Map<String, dynamic>> list,
+    ) {
+      final Map<String, dynamic>? d = list
+          .cast<Map<String, dynamic>?>()
+          .firstWhere(
+            (Map<String, dynamic>? e) => e?['id'] == docId,
+            orElse: () => null,
+          );
+      if (d != null) {
+        ctrl.add(d);
+      }
+    }, true);
+
+    ctrl.onCancel = () {
+      // quitar listener
+      try {
+        bloc.deleteFunctionToProcessTValueOnStream(key);
+      } catch (_) {}
+      ctrl.close();
+    };
+
+    return ctrl.stream;
+  }
+
+  @override
+  Stream<List<Map<String, dynamic>>> collectionStream({
+    required String collection,
+  }) {
+    _ensureNotDisposed();
+    if (collection.isEmpty) {
+      throw ArgumentError('collection must not be empty');
+    }
+    final BlocGeneral<List<Map<String, dynamic>>> bloc = _ensureCollectionBloc(
+      collection,
+    );
+    // devolvemos el stream del bloc (Bloc<T> de tu dominio expone stream)
+    return bloc.stream;
+  }
+
+  // ------------------------ Helpers fila <-> json ------------------------
 
   List<Object?> _toRow(Map<String, dynamic> json) {
     final String id = Utils.getStringFromDynamic(json['id']);
@@ -171,140 +530,75 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
     return null;
   }
 
-  // ----------------- ServiceWsDatabase impl -----------------
+  // ------------------------ Background Pull (Sheets -> Local) ------------------
 
-  @override
-  Future<void> saveDocument({
-    required String collection,
-    required String docId,
-    required Map<String, dynamic> document,
-  }) async {
-    _ensureNotDisposed();
-    if (collection.isEmpty) {
-      throw ArgumentError('collection must not be empty');
-    }
-    if (docId.isEmpty) {
-      throw ArgumentError('docId must not be empty');
-    }
-
-    final String ssId = await _ensureSpreadsheet();
-    await _ensureSheetAndHeader(ssId);
-
-    final List<Object?> row = _toRow(<String, dynamic>{
-      ...document,
-      'id': docId,
+  void _startBackgroundSync() {
+    // Primer tick “lazy” para no bloquear el arranque
+    _timer = Timer(_pollInterval, () async {
+      if (_disposed) {
+        return;
+      }
+      await _pullOnceSafely();
+      // loop
+      _timer = Timer.periodic(_pollInterval, (_) => _pullOnceSafely());
     });
-    final int? rowNumber = await _findRowById(ssId, docId);
-    final sheets.SheetsApi api = _sheets();
+  }
 
-    if (rowNumber == null) {
-      await api.spreadsheets.values.append(
-        sheets.ValueRange(values: <List<Object?>>[row]),
-        ssId,
-        _kSheetTitle,
-        valueInputOption: 'RAW',
-        insertDataOption: 'INSERT_ROWS',
-      );
-    } else {
-      await api.spreadsheets.values.update(
-        sheets.ValueRange(values: <List<Object?>>[row]),
-        ssId,
-        '$_kSheetTitle!A$rowNumber:E$rowNumber',
-        valueInputOption: 'RAW',
-      );
+  Future<void> _pullOnceSafely() async {
+    try {
+      await _pullFromSheets();
+    } catch (e) {
+      log('Error al crear $e');
     }
   }
 
-  @override
-  Future<Map<String, dynamic>> readDocument({
-    required String collection,
-    required String docId,
-  }) async {
-    _ensureNotDisposed();
-    if (collection.isEmpty) {
-      throw ArgumentError('collection must not be empty');
+  /// Lee esta sheet y sincroniza _store (solo sobrescribe si el doc existe en Sheets)
+  Future<void> _pullFromSheets() async {
+    if (_disposed) {
+      return;
     }
-    if (docId.isEmpty) {
-      throw ArgumentError('docId must not be empty');
-    }
-
     final String ssId = await _ensureSpreadsheet();
-    final int? rowNumber = await _findRowById(ssId, docId);
-    if (rowNumber == null) {
-      throw StateError('Document not found');
-    }
 
     final sheets.ValueRange resp = await _sheets().spreadsheets.values.get(
       ssId,
-      '$_kSheetTitle!A$rowNumber:E$rowNumber',
+      '$_kSheetTitle!A2:E',
     );
-    final List<List<Object?>> values =
+    final List<List<Object?>> rows =
         resp.values?.map((List<Object?> e) => e.cast<Object?>()).toList() ??
         <List<Object?>>[];
-    if (values.isEmpty) {
-      throw StateError('Row not found');
-    }
-    return _fromRow(values.first);
-  }
 
-  @override
-  Future<void> deleteDocument({
-    required String collection,
-    required String docId,
-  }) async {
-    _ensureNotDisposed();
-    if (collection.isEmpty) {
-      throw ArgumentError('collection must not be empty');
-    }
-    if (docId.isEmpty) {
-      throw ArgumentError('docId must not be empty');
-    }
-
-    final String ssId = await _ensureSpreadsheet();
-    final int? rowNumber = await _findRowById(ssId, docId);
-    if (rowNumber == null) {
+    if (rows.isEmpty) {
       return;
     }
 
-    final sheets.Spreadsheet ss = await _sheets().spreadsheets.get(ssId);
-    final sheets.Sheet sheet = ss.sheets!.firstWhere(
-      (sheets.Sheet s) => s.properties?.title == _kSheetTitle,
-      orElse: () => throw StateError('Sheet $_kSheetTitle not found'),
+    // Por ahora esto va a una sola "collection" lógica según tu uso (“canvases”)
+    const String collection = 'canvases';
+    final Map<String, Map<String, dynamic>> docs = _store.putIfAbsent(
+      collection,
+      () => <String, Map<String, dynamic>>{},
     );
 
-    final int r0 = rowNumber - 1;
-    await _sheets().spreadsheets.batchUpdate(
-      sheets.BatchUpdateSpreadsheetRequest.fromJson(<dynamic, dynamic>{
-        'requests': <Map<String, Map<String, Map<String, Object?>>>>[
-          <String, Map<String, Map<String, Object?>>>{
-            'deleteDimension': <String, Map<String, Object?>>{
-              'range': <String, Object?>{
-                'sheetId': sheet.properties!.sheetId,
-                'dimension': 'ROWS',
-                'startIndex': r0,
-                'endIndex': r0 + 1,
-              },
-            },
-          },
-        ],
-      }),
-      ssId,
-    );
+    int updated = 0;
+    for (final List<Object?> r in rows) {
+      final Map<String, dynamic> doc = _fromRow(r);
+      final String id = Utils.getStringFromDynamic(doc['id']);
+      if (id.isEmpty) {
+        continue;
+      }
+      // política: gana Sheets solo si doc existe allá (pull)
+      docs[id] = doc;
+      updated++;
+    }
+    if (updated > 0) {
+      _emitCollection(collection);
+    }
   }
 
-  @override
-  Stream<Map<String, dynamic>> documentStream({
-    required String collection,
-    required String docId,
-  }) => throw UnsupportedError('documentStream not supported for Sheets');
-
-  @override
-  Stream<List<Map<String, dynamic>>> collectionStream({
-    required String collection,
-  }) => throw UnsupportedError('collectionStream not supported for Sheets');
+  // ------------------------ Lifecycle ------------------------
 
   @override
   void dispose() {
+    _timer?.cancel();
     _http.close();
     _disposed = true;
   }

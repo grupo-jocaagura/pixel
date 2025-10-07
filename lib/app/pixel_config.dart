@@ -3,6 +3,7 @@ import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 import '../data/gateways/gateway_canvas_impl.dart';
 import '../data/repositories/repository_canvas_impl.dart';
 import '../data/services/firebase_service_session.dart';
+import '../data/services/google_sheets/coalesced_token_provider.dart';
 import '../data/services/google_sheets/google_sheets_canvas_db.dart';
 import '../domain/gateways/gateway_canvas.dart';
 import '../domain/repositories/repository_canvas.dart';
@@ -126,7 +127,9 @@ class PixelConfig {
 
     final ServiceWsDatabase<Map<String, dynamic>> serviceWsDatabase =
         GoogleSheetsCanvasDb(
-          tokenProvider: () => serviceSession.sheetsAccessToken(),
+          tokenProvider: CoalescedTokenProvider(
+            () => serviceSession.sheetsAccessToken(),
+          ).call,
           spreadsheetTitleOrId: 'Pixel - Mis Canvases',
         );
 

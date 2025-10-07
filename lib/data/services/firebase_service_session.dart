@@ -338,17 +338,47 @@ class FirebaseServiceSession implements ServiceSession {
   DateTime? _cachedSheetsIssuedAt;
   final Duration _tokenTtl = const Duration(minutes: 50);
 
+  // En FirebaseServiceSession
+  Future<String>? _sheetsTokenInFlight;
+  bool _popupOpen = false;
+
   Future<String> sheetsAccessToken() async {
     _checkDisposed();
-    await _ensureGoogleInit(); // ← MUY IMPORTANTE: initialize() debe haberse completado
+    await _ensureGoogleInit();
 
-    // cache “fresco”
+    // Reusar la misma Future si ya hay una en curso
+    if (_sheetsTokenInFlight != null) {
+      return _sheetsTokenInFlight!;
+    }
+
+    // Cache fresco
     if (_cachedSheetsAccessToken != null && _cachedSheetsIssuedAt != null) {
       if (DateTime.now().isBefore(_cachedSheetsIssuedAt!.add(_tokenTtl))) {
         return _cachedSheetsAccessToken!;
       }
     }
 
+    // Creamos la Future y la compartimos con todos los que llamen mientras esté en curso
+    final Completer<String> completer = Completer<String>();
+    _sheetsTokenInFlight = completer.future;
+
+    try {
+      final String token =
+          await _getSheetsTokenInternal(); // mueve tu lógica actual aquí
+      _cacheToken(token);
+      completer.complete(token);
+      return token;
+    } catch (e) {
+      completer.completeError(e);
+      rethrow;
+    } finally {
+      // al terminar, liberamos
+      _sheetsTokenInFlight = null;
+      _popupOpen = false;
+    }
+  }
+
+  Future<String> _getSheetsTokenInternal() async {
     final bool isWindows =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
     final bool isLinux =
@@ -359,18 +389,22 @@ class FirebaseServiceSession implements ServiceSession {
       );
     }
 
-    // -------------------------
-    // WEB: usar FirebaseAuth
-    // -------------------------
     if (kIsWeb) {
       final fb.GoogleAuthProvider provider = fb.GoogleAuthProvider()
         ..addScope(_kSheetsScope)
-        ..addScope(
-          _kDriveFileScope,
-        ) // opcional, si seguirás el patrón drive.file
+        ..addScope(_kDriveFileScope)
         ..setCustomParameters(<String, String>{'prompt': 'select_account'});
 
       try {
+        if (_popupOpen) {
+          // si alguien ya abrió popup, espera a que su future resuelva (sheetsAccessToken() arriba ya lo hace)
+          throw fb.FirebaseAuthException(
+            code: 'cancelled-popup-request',
+            message: 'Popup already open',
+          );
+        }
+        _popupOpen = true;
+
         final fb.User? u = _auth.currentUser;
         if (u != null) {
           final fb.UserCredential rc = await u.reauthenticateWithPopup(
@@ -378,26 +412,26 @@ class FirebaseServiceSession implements ServiceSession {
           );
           final String? at = rc.credential?.accessToken;
           if (at != null && at.isNotEmpty) {
-            _cacheToken(at);
             return at;
           }
         }
         final fb.UserCredential c = await _auth.signInWithPopup(provider);
         final String? at = c.credential?.accessToken;
         if (at == null || at.isEmpty) {
-          throw StateError(
-            'No se obtuvo accessToken OAuth (Web). Revisa scope y dominios autorizados.',
-          );
+          throw StateError('No se obtuvo accessToken OAuth (Web).');
         }
-        _cacheToken(at);
         return at;
       } on fb.FirebaseAuthException catch (e) {
+        if (e.code == 'cancelled-popup-request') {
+          // otro popup fue prioritario; deja que la future en vuelo resuelva
+          rethrow;
+        }
         if (e.code == 'popup-blocked') {
+          _popupOpen = true;
           await _auth.signInWithRedirect(provider);
           final fb.UserCredential c = await _auth.getRedirectResult();
           final String? at = c.credential?.accessToken;
           if (at != null && at.isNotEmpty) {
-            _cacheToken(at);
             return at;
           }
           throw StateError(
@@ -408,28 +442,25 @@ class FirebaseServiceSession implements ServiceSession {
       }
     }
 
-    // -------------------------------------------------
-    // ANDROID / iOS / macOS: google_sign_in v6 “full”
-    // -------------------------------------------------
+    // Android/iOS/macOS con google_sign_in v6
     final googlesi.GoogleSignIn gs = googlesi.GoogleSignIn.instance;
 
-    // 1) intento silencioso (sin UI)
+    // Silencioso primero
     final Map<String, String>? silentHeaders = await gs.authorizationClient
-        .authorizationHeaders(<String>[
-          _kSheetsScope,
-          _kDriveFileScope,
-        ], promptIfNecessary: false);
+        .authorizationHeaders(<String>[_kSheetsScope, _kDriveFileScope]);
     if (silentHeaders != null) {
       final String? bearer = silentHeaders['Authorization'];
       if (bearer != null && bearer.startsWith('Bearer ')) {
-        final String at = bearer.substring(7);
-        _cacheToken(at);
-        return at;
+        return bearer.substring(7);
       }
     }
 
-    // 2) authenticate + promptIfNecessary:true (UI sólo si falta)
     if (gs.supportsAuthenticate()) {
+      if (_popupOpen) {
+        throw StateError('Otro flujo de auth ya está abierto.');
+      }
+      _popupOpen = true;
+
       final googlesi.GoogleSignInAccount account = await gs.authenticate(
         scopeHint: <String>[_kSheetsScope, _kDriveFileScope],
       );
@@ -439,25 +470,17 @@ class FirebaseServiceSession implements ServiceSession {
             _kSheetsScope,
             _kDriveFileScope,
           ], promptIfNecessary: true);
-
       if (headers == null) {
-        throw StateError(
-          'No se obtuvieron headers de autorización para Sheets.',
-        );
+        throw StateError('No headers para Sheets.');
       }
       final String? bearer = headers['Authorization'];
       if (bearer == null || !bearer.startsWith('Bearer ')) {
-        throw StateError('Authorization header inválido (sin Bearer).');
+        throw StateError('Authorization header inválido.');
       }
-      final String at = bearer.substring(7);
-      _cacheToken(at);
-      return at;
+      return bearer.substring(7);
     }
 
-    // Si llegamos acá en desktop Apple (muy raro), no hay authenticate() disponible
-    throw UnsupportedError(
-      'La plataforma actual no soporta authenticate() y no hay fallback configurado.',
-    );
+    throw UnsupportedError('authenticate() no soportado y no hay fallback.');
   }
 
   void _cacheToken(String token) {
