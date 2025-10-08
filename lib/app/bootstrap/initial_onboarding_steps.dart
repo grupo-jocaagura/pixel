@@ -15,7 +15,6 @@ List<OnboardingStep> buildOnboardingSteps({
       },
       autoAdvanceAfter: const Duration(milliseconds: 200),
     ),
-
     OnboardingStep(
       title: 'Tema',
       description: 'Cargando tema…',
@@ -26,15 +25,6 @@ List<OnboardingStep> buildOnboardingSteps({
       title: 'Canvas',
       description: 'Preparando canvas…',
       onEnter: () async => Right<ErrorItem, Unit>(Unit.value),
-      autoAdvanceAfter: const Duration(milliseconds: 300),
-    ),
-    OnboardingStep(
-      title: 'Inicializando servicios',
-      description: 'Iniciando session...',
-      onEnter: () async {
-        blocSession.logInWithGoogle();
-        return Right<ErrorItem, Unit>(Unit.value);
-      },
       autoAdvanceAfter: const Duration(milliseconds: 300),
     ),
   ];
