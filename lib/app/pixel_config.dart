@@ -107,6 +107,7 @@ class PixelConfig {
     final FirebaseServiceSession serviceSession = FirebaseServiceSession(
       googleClientId: Env.googleClientId,
     );
+    serviceSession.processRedirectResultOnce();
 
     final ServiceWsDatabase<Map<String, dynamic>> serviceWsDatabase =
         GoogleSheetsCanvasDb(

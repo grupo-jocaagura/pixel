@@ -1,7 +1,8 @@
 {
   "projects": {
     "qa": "pixel-qa-9c8b6",
-    "prod": "pixel-prod-1b8ce"
+    "prod": "pixel-prod-1b8ce",
+    "default": "pixel-qa-9c8b6"
   },
   "targets": {},
   "etags": {}

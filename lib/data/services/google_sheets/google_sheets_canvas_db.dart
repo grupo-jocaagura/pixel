@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:googleapis/drive/v3.dart' as drive;
 import 'package:googleapis/sheets/v4.dart' as sheets;
 import 'package:http/http.dart' as http;
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
+import '../../../app/env.dart';
+import '../../../app/pixel_config.dart';
 import '../../../domain/services/service_shared_preferences.dart';
 import '../service_shared_preferences_impl.dart';
 
@@ -34,12 +36,14 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
     Duration pollInterval = const Duration(seconds: 5),
     http.Client? httpClient,
     ServiceSharedPreferences? sharedPrefs,
+    String? collectionName,
   }) : _tokenProvider = tokenProvider,
        _spreadsheetTitleOrId = spreadsheetTitleOrId,
        _isTitle = isTitle,
        _kSheetTitle = sheetTitle,
        _pollInterval = pollInterval,
        _prefs = sharedPrefs ?? ServiceSharedPreferencesImpl(),
+       _collectionName = collectionName ?? 'canvas',
        _http = httpClient ?? http.Client() {
     _startBackgroundSync();
   }
@@ -52,6 +56,7 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
   final Duration _pollInterval;
   final http.Client _http;
   final ServiceSharedPreferences _prefs;
+  final String _collectionName;
 
   // ---- Cache/estado de resolución
   static final Map<String, String> _sessionSpreadsheetIdByTitle =
@@ -168,7 +173,9 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
     // Si vino ID directo, úsalo
     if (!_isTitle) {
       _spreadsheetIdCache = _spreadsheetTitleOrId;
-      log('[SheetsDb] Using provided spreadsheetId=$_spreadsheetIdCache');
+      _log(
+        'ensureSpreadsheet() cache=$_spreadsheetIdCache isTitle=$_isTitle titleOrId=$_spreadsheetTitleOrId',
+      );
       return _ensureSheetAndHeader(
         _spreadsheetIdCache!,
       ).then((_) => _spreadsheetIdCache!);
@@ -179,7 +186,9 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
         _sessionSpreadsheetIdByTitle[_spreadsheetTitleOrId];
     if (sessionId != null && sessionId.isNotEmpty) {
       _spreadsheetIdCache = sessionId;
-      log('[SheetsDb] Using session cache spreadsheetId=$sessionId');
+      _log(
+        'ensureSpreadsheet() cache=$_spreadsheetIdCache isTitle=$_isTitle titleOrId=$_spreadsheetTitleOrId',
+      );
       return _ensureSheetAndHeader(sessionId).then((_) => sessionId);
     }
 
@@ -200,14 +209,18 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
     if (cached != null && cached.isNotEmpty) {
       _spreadsheetIdCache = cached;
       _sessionSpreadsheetIdByTitle[_spreadsheetTitleOrId] = cached;
-      log('[SheetsDb] Using prefs spreadsheetId=$cached');
+      _log(
+        'ensureSpreadsheet() cache=$_spreadsheetIdCache isTitle=$_isTitle titleOrId=$_spreadsheetTitleOrId',
+      );
       await _ensureSheetAndHeader(cached);
       return cached;
     }
 
     // 2) Listar por título
     final String title = _spreadsheetTitleOrId;
-    log('[SheetsDb] Resolving spreadsheet by title="$title"...');
+    _log(
+      'ensureSpreadsheet() cache=$_spreadsheetIdCache isTitle=$_isTitle titleOrId=$_spreadsheetTitleOrId',
+    );
     try {
       final drive.FileList list = await _drive().files.list(
         q: "name='${title.replaceAll("'", r"\'")}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
@@ -217,14 +230,18 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
       );
       if (list.files?.isNotEmpty ?? false) {
         _spreadsheetIdCache = list.files!.first.id;
-        log('[SheetsDb] Found spreadsheet: id=$_spreadsheetIdCache');
+        _log(
+          'ensureSpreadsheet() cache=$_spreadsheetIdCache isTitle=$_isTitle titleOrId=$_spreadsheetTitleOrId',
+        );
         await _ensureSheetAndHeader(_spreadsheetIdCache!);
         _sessionSpreadsheetIdByTitle[title] = _spreadsheetIdCache!;
         await _prefs.writeString(_prefsKey, _spreadsheetIdCache!);
         return _spreadsheetIdCache!;
       }
     } catch (e) {
-      log('[SheetsDb][WARN] Drive list failed (will try create): $e');
+      _log(
+        'ensureSpreadsheet() cache=$_spreadsheetIdCache isTitle=$_isTitle titleOrId=$_spreadsheetTitleOrId',
+      );
     }
 
     // 3) Crear UNA vez
@@ -235,9 +252,9 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
           ..mimeType = 'application/vnd.google-apps.spreadsheet',
       );
       _spreadsheetIdCache = created.id;
-      log('[SheetsDb] Created spreadsheet via Drive: id=$_spreadsheetIdCache');
+      _log('[SheetsDb] Created spreadsheet via Drive: id=$_spreadsheetIdCache');
     } catch (e) {
-      log(
+      _log(
         '[SheetsDb][WARN] Drive create failed, fallback to Sheets.create: $e',
       );
       final sheets.Spreadsheet created = await _sheets().spreadsheets.create(
@@ -246,7 +263,9 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
         }),
       );
       _spreadsheetIdCache = created.spreadsheetId;
-      log('[SheetsDb] Created spreadsheet via Sheets: id=$_spreadsheetIdCache');
+      _log(
+        '[SheetsDb] Created spreadsheet via Sheets: id=$_spreadsheetIdCache',
+      );
     }
 
     await _ensureSheetAndHeader(_spreadsheetIdCache!);
@@ -317,7 +336,7 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
           );
         }
       } catch (e) {
-        log('[SheetsDb][PUSH][WARN] $e');
+        _log('[SheetsDb][PUSH][WARN] $e');
       }
     });
   }
@@ -354,7 +373,7 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
       _schedulePushToSheets(collection, docId, toSave);
     } else {
       _pendingPushes['$collection/$docId'] = toSave;
-      log('[SheetsDb] defer push until hydrated: $collection/$docId');
+      _log('defer push until hydrated: $collection/$docId');
     }
   }
 
@@ -582,6 +601,7 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
       <String, Map<String, dynamic>>{};
 
   void _startBackgroundSync() {
+    _log('startBackgroundSync()');
     _pullOnceSafely();
     _timer = Timer(_pollInterval, () async {
       if (_disposed) {
@@ -596,34 +616,56 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
     try {
       await _pullFromSheets();
     } catch (e) {
-      log('SheetsDb [PULL] error: $e');
+      _log('SheetsDb [PULL] error: $e');
     }
   }
 
-  /// Lee esta sheet y sincroniza _store (pull a colección "canvases")
   Future<void> _pullFromSheets() async {
     if (_disposed) {
       return;
     }
     final String ssId = await _ensureSpreadsheet();
+    _log('PULL from ssId=$ssId sheet=$_kSheetTitle hydrated=$_hydrated');
 
     final sheets.ValueRange resp = await _sheets().spreadsheets.values.get(
       ssId,
       '$_kSheetTitle!A2:E',
     );
+
     final List<List<Object?>> rows =
         resp.values?.map((List<Object?> e) => e.cast<Object?>()).toList() ??
         <List<Object?>>[];
 
-    if (rows.isEmpty) {
-      return;
-    }
-
-    const String collection = 'canvases';
     final Map<String, Map<String, dynamic>> docs = _store.putIfAbsent(
-      collection,
+      _collectionName,
       () => <String, Map<String, dynamic>>{},
     );
+
+    if (rows.isEmpty) {
+      _log(
+        'PULL: 0 rows in remote. Mark hydrated and flush any pending pushes.',
+      );
+      // Importante: marcar hidratado aunque esté vacío
+      final bool wasHydrated = _hydrated;
+      _hydrated = true;
+
+      // Si había pendientes y antes no estábamos hidratados, súbelos todos (no hay nada remoto que los pise)
+      if (!wasHydrated && _pendingPushes.isNotEmpty) {
+        final List<MapEntry<String, Map<String, dynamic>>> entries =
+            _pendingPushes.entries.toList();
+        for (final MapEntry<String, Map<String, dynamic>> e in entries) {
+          final String key = e.key; // "collection/docId"
+          final Map<String, dynamic> data = e.value;
+          final int slash = key.indexOf('/');
+          final String col = key.substring(0, slash);
+          final String id = key.substring(slash + 1);
+          _log('flush deferred push (empty remote): $key');
+          _schedulePushToSheets(col, id, data, delay: Duration.zero);
+          _pendingPushes.remove(key);
+        }
+      }
+      return;
+    }
 
     int updated = 0;
     for (final List<Object?> r in rows) {
@@ -635,16 +677,17 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
       docs[id] = doc;
       updated++;
     }
-    // ... luego de llenar 'docs' con lo que vino de Sheets:
+    _log('PULL: rows=$updated (merged into collection="$_collectionName")');
+
     if (updated > 0) {
-      _emitCollectionDebounced(collection);
+      _emitCollectionDebounced(_collectionName);
     }
 
     // ---- Marcar hidratado y procesar pendientes ----
     final bool wasHydrated = _hydrated;
     _hydrated = true;
 
-    // Construye el set de ids que EXISTEN en remoto
+    // ids que EXISTEN en remoto (después de merge)
     final Set<String> remoteIds = docs.keys.toSet();
 
     if (!wasHydrated && _pendingPushes.isNotEmpty) {
@@ -658,12 +701,12 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
         final String id = key.substring(slash + 1);
 
         if (remoteIds.contains(id)) {
-          log('[SheetsDb] drop deferred push (remote wins): $key');
+          _log('drop deferred push (remote wins): $key');
           _pendingPushes.remove(key);
           continue;
         }
 
-        log('[SheetsDb] flush deferred push (new doc): $key');
+        _log('flush deferred push (new doc): $key');
         _schedulePushToSheets(col, id, data, delay: Duration.zero);
         _pendingPushes.remove(key);
       }
@@ -683,5 +726,12 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
     }
     _http.close();
     _disposed = true;
+  }
+
+  final bool _verboseLogs = Env.mode != AppMode.prod;
+  void _log(String msg) {
+    if (_verboseLogs) {
+      debugPrint('[SheetsDb] $msg');
+    }
   }
 }

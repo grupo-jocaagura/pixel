@@ -38,30 +38,44 @@ class FirebaseServiceSession implements ServiceSession {
   bool _googleInitialized = false;
 
   Completer<void>? _gsiInitCompleter;
+  bool _webRedirectHandled = false;
 
-  Future<void> _initGoogle({String? clientId}) async {
-    if (_googleInitialized) {
-      return;
-    }
-
-    _gsiInitCompleter ??= Completer<void>();
-
+  /// Llama esto una sola vez tras inicializar Firebase en Web.
+  /// Captura el accessToken del flujo "signInWithRedirect" y lo cachea.
+  Future<void> processRedirectResultOnce() async {
+    if (!kIsWeb || _webRedirectHandled) return;
+    _webRedirectHandled = true;
     try {
-      await googlesi.GoogleSignIn.instance.initialize(
-        clientId: (clientId != null && clientId.isNotEmpty) ? clientId : null,
-        // serverClientId: ... (solo si realmente lo usas)
-        // hostedDomain: ... (opcional)
-      );
-      _googleInitialized = true;
-      if (!_gsiInitCompleter!.isCompleted) {
-        _gsiInitCompleter!.complete();
+      final fb.UserCredential c = await _auth.getRedirectResult();
+      final fb.User? u = c.user;
+      if (u != null) {
+        // cachea el accessToken OAuth (Google) si viene
+        final String? at = c.credential?.accessToken;
+        if (at != null && at.isNotEmpty) {
+          _cacheToken(at);
+        }
+        // emite usuario normal (Firebase ID token)
+        final String idToken = Utils.getStringFromDynamic(await u.getIdToken());
+        _authCtrl.add(_userToJson(u, idToken));
       }
     } catch (e) {
-      // incluso si falla, evita volver a intentar en bucle
-      _googleInitialized = true;
-      if (!_gsiInitCompleter!.isCompleted) {
-        _gsiInitCompleter!.complete();
+      // opcional: loggear
+    }
+  }
+
+  Future<void> _initGoogle({String? clientId}) async {
+    if (_googleInitialized) return;
+    _gsiInitCompleter ??= Completer<void>();
+    try {
+      if (!kIsWeb) {
+        await googlesi.GoogleSignIn.instance.initialize(
+          clientId: (clientId != null && clientId.isNotEmpty) ? clientId : null,
+        );
       }
+    } catch (_) {}
+    _googleInitialized = true;
+    if (!_gsiInitCompleter!.isCompleted) {
+      _gsiInitCompleter!.complete();
     }
   }
 
@@ -167,16 +181,33 @@ class FirebaseServiceSession implements ServiceSession {
       // ---------- WEB ----------
       if (kIsWeb) {
         final fb.GoogleAuthProvider provider = fb.GoogleAuthProvider()
+          ..addScope(_kSheetsScope)
+          ..addScope(_kDriveFileScope)
           ..setCustomParameters(<String, String>{'prompt': 'select_account'});
 
-        final fb.UserCredential c = await _auth.signInWithPopup(provider);
-        final fb.User? u = c.user;
+        try {
+          final fb.UserCredential c = await _auth.signInWithPopup(provider);
+          final fb.User? u = c.user;
 
-        final String token = Utils.getStringFromDynamic(await u!.getIdToken());
+          // ⬇️ cachea el accessToken de OAuth para Sheets/Drive
+          final String? at = c.credential?.accessToken;
+          if (at != null && at.isNotEmpty) {
+            _cacheToken(at);
+          }
 
-        final Map<String, dynamic> user = _userToJson(u, token);
-        _authCtrl.add(user);
-        return user;
+          final String idToken = Utils.getStringFromDynamic(
+            await u!.getIdToken(),
+          );
+          final Map<String, dynamic> user = _userToJson(u, idToken);
+          _authCtrl.add(user);
+          return user;
+        } on fb.FirebaseAuthException catch (e) {
+          if (e.code == 'popup-blocked' || e.code == 'popup-closed-by-user') {
+            await _auth.signInWithRedirect(provider);
+            return <String, dynamic>{'pendingRedirect': true};
+          }
+          rethrow;
+        }
       }
 
       // ---------- DESKTOP (Windows/macOS/Linux) ----------
@@ -363,8 +394,7 @@ class FirebaseServiceSession implements ServiceSession {
     _sheetsTokenInFlight = completer.future;
 
     try {
-      final String token =
-          await _getSheetsTokenInternal(); // mueve tu lógica actual aquí
+      final String token = await _getSheetsTokenInternal();
       _cacheToken(token);
       completer.complete(token);
       return token;
@@ -390,56 +420,15 @@ class FirebaseServiceSession implements ServiceSession {
     }
 
     if (kIsWeb) {
-      final fb.GoogleAuthProvider provider = fb.GoogleAuthProvider()
-        ..addScope(_kSheetsScope)
-        ..addScope(_kDriveFileScope)
-        ..setCustomParameters(<String, String>{'prompt': 'select_account'});
-
-      try {
-        if (_popupOpen) {
-          // si alguien ya abrió popup, espera a que su future resuelva (sheetsAccessToken() arriba ya lo hace)
-          throw fb.FirebaseAuthException(
-            code: 'cancelled-popup-request',
-            message: 'Popup already open',
-          );
-        }
-        _popupOpen = true;
-
-        final fb.User? u = _auth.currentUser;
-        if (u != null) {
-          final fb.UserCredential rc = await u.reauthenticateWithPopup(
-            provider,
-          );
-          final String? at = rc.credential?.accessToken;
-          if (at != null && at.isNotEmpty) {
-            return at;
-          }
-        }
-        final fb.UserCredential c = await _auth.signInWithPopup(provider);
-        final String? at = c.credential?.accessToken;
-        if (at == null || at.isEmpty) {
-          throw StateError('No se obtuvo accessToken OAuth (Web).');
-        }
+      final String? at = _cachedSheetsAccessToken;
+      if (at != null &&
+          _cachedSheetsIssuedAt != null &&
+          DateTime.now().isBefore(_cachedSheetsIssuedAt!.add(_tokenTtl))) {
         return at;
-      } on fb.FirebaseAuthException catch (e) {
-        if (e.code == 'cancelled-popup-request') {
-          // otro popup fue prioritario; deja que la future en vuelo resuelva
-          rethrow;
-        }
-        if (e.code == 'popup-blocked') {
-          _popupOpen = true;
-          await _auth.signInWithRedirect(provider);
-          final fb.UserCredential c = await _auth.getRedirectResult();
-          final String? at = c.credential?.accessToken;
-          if (at != null && at.isNotEmpty) {
-            return at;
-          }
-          throw StateError(
-            'Redirect completó pero no entregó accessToken OAuth.',
-          );
-        }
-        rethrow;
       }
+      throw StateError(
+        'No cached Sheets access token on Web; require user gesture to refresh.',
+      );
     }
 
     // Android/iOS/macOS con google_sign_in v6
