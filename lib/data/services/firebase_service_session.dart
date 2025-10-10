@@ -43,7 +43,9 @@ class FirebaseServiceSession implements ServiceSession {
   /// Llama esto una sola vez tras inicializar Firebase en Web.
   /// Captura el accessToken del flujo "signInWithRedirect" y lo cachea.
   Future<void> processRedirectResultOnce() async {
-    if (!kIsWeb || _webRedirectHandled) return;
+    if (!kIsWeb || _webRedirectHandled) {
+      return;
+    }
     _webRedirectHandled = true;
     try {
       final fb.UserCredential c = await _auth.getRedirectResult();
@@ -64,7 +66,9 @@ class FirebaseServiceSession implements ServiceSession {
   }
 
   Future<void> _initGoogle({String? clientId}) async {
-    if (_googleInitialized) return;
+    if (_googleInitialized) {
+      return;
+    }
     _gsiInitCompleter ??= Completer<void>();
     try {
       if (!kIsWeb) {
