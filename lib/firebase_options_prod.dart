@@ -73,5 +73,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'pixel-prod-1b8ce.firebasestorage.app',
     measurementId: 'G-3SEGSYSMCF',
   );
-
 }
