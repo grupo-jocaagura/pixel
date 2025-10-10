@@ -1,0 +1,41 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "pixel-prod-1b8ce",
+          "appId": "1:970409172645:android:4c2602f64c7d5dafd0774c",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options_prod.dart": {
+          "projectId": "pixel-prod-1b8ce",
+          "configurations": {
+            "windows": "1:970409172645:web:aeb7924f66f026f9d0774c"
+          }
+        },
+        "lib/firebase_options_qa.dart": {
+          "projectId": "pixel-qa-9c8b6",
+          "configurations": {
+            "windows": "1:134318080567:web:b8eb562a159be2719935b2"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "cleanUrls": true,
+    "rewrites": [{ "source": "**", "destination": "/index.html" }],
+    "headers": [
+      { "source": "/index.html",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+      },
+      { "source": "**/*.@(js|css|png|jpg|jpeg|gif|svg|webp|wasm|ttf|otf)",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      }
+    ]
+  }
+}
