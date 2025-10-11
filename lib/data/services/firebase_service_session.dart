@@ -7,6 +7,8 @@ import 'package:google_sign_in/google_sign_in.dart' as googlesi;
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart'
     show Debouncer, ServiceSession, Utils;
 
+import '../../app/env.dart';
+
 /// Implementación real de ServiceSession usando FirebaseAuth + Google Sign-In.
 /// - Trabaja EXCLUSIVAMENTE con Map (como FakeServiceSession).
 /// - authStateChanges() emite Map? con el MISMO shape del fake:
@@ -183,11 +185,14 @@ class FirebaseServiceSession implements ServiceSession {
 
     try {
       // ---------- WEB ----------
+
       if (kIsWeb) {
         final fb.GoogleAuthProvider provider = fb.GoogleAuthProvider()
-          ..addScope(_kSheetsScope)
-          ..addScope(_kDriveFileScope)
           ..setCustomParameters(<String, String>{'prompt': 'select_account'});
+        if (Env.isQa) {
+          provider.addScope(_kSheetsScope);
+          provider.addScope(_kDriveFileScope);
+        }
 
         try {
           final fb.UserCredential c = await _auth.signInWithPopup(provider);
@@ -378,6 +383,11 @@ class FirebaseServiceSession implements ServiceSession {
   bool _popupOpen = false;
 
   Future<String> sheetsAccessToken() async {
+    if (!Env.isQa) {
+      throw UnsupportedError(
+        'Sheets token solicitado fuera de QA (${Env.mode}).',
+      );
+    }
     _checkDisposed();
     await _ensureGoogleInit();
 

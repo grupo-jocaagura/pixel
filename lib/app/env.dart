@@ -21,6 +21,9 @@ class Env {
     defaultValue: 'dev',
   );
 
+  static bool get isQa => _mode == 'qa';
+  static bool get isProd => _mode == 'prod';
+
   static AppMode get mode {
     switch (_mode) {
       case 'prod':

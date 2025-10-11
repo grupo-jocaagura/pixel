@@ -35,3 +35,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### removed
 - **Web/Logs**: `debugPrint` obsoletos.
 - **Git ignore**: Regla que ignoraba `google-services.json` (ahora se versionan por sabor).
+
+## [0.0.3] - 2025-10-10
+
+### added
+- **Firestore**: `ServiceFirebaseWsDatabase` como nuevo `ServiceWsDatabase` (Cloud Firestore) con soporte multi-tenant (`users/{uid}/canvas/{docId}`), `emitInitial`, copias profundas y deduplicación por contenido.
+- **Errores robustos**: Mapeo de `FirebaseException` y errores genéricos a `ErrorItem` consistente.
+- **Helpers de entorno**: Getters `Env.isQa` y `Env.isProd` para validaciones claras y fiables.
+- **Dependencias**: `cloud_firestore` en `pubspec.yaml`.
+- **Docs**: `firestore-setup.md` (estructura, reglas de seguridad, pasos de integración para QA/Prod).
+
+### changed
+- **Persistencia por defecto**: `PixelConfig` ahora usa **Cloud Firestore** en QA y Prod (reemplaza Google Sheets).
+- **Auth/Scopes**: Scopes de Google Sheets/Drive condicionados solo para **QA**; en Prod no se solicitan permisos innecesarios.
+- **Guardas de acceso**: `sheetsAccessToken()` lanza `UnsupportedError` fuera de QA.
+
+### removed
+- **Google Sheets DB**: Eliminados `GoogleSheetsCanvasDb` y `CoalescedTokenProvider`.
+
+### security
+- **Menos permisos en producción**: Se evita solicitar scopes de Drive/Sheets en Prod, reduciendo superficie de permisos y popups innecesarios.
