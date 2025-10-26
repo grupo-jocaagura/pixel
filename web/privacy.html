@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Política de Privacidad – Pixel / Pixarra</title>
+    <meta name="description" content="Política de privacidad de Pixel/Pixarra. Uso de datos, almacenamiento, protección, retención y eliminación.">
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href="https://pixel.jocaagura.com/privacy" />
+    <style>
+        :root {
+          --fg:#1b1f23; --muted:#5f6b7a; --bg:#fff; --card:#f8f9fb; --link:#0a66c2; --border:#e5e7eb;
+        }
+        * { box-sizing: border-box; }
+        body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif; color:var(--fg); background:var(--bg); line-height:1.6; }
+        header, main, footer { width:100%; max-width:960px; margin:0 auto; padding: 16px; }
+        header { padding-top:24px; }
+        h1 { margin: 0 0 8px; font-size: clamp(1.6rem, 2.6vw, 2rem); }
+        .meta { color:var(--muted); margin-bottom: 16px; }
+        section { background: var(--card); border:1px solid var(--border); border-radius: 12px; padding:16px; margin: 16px 0; }
+        h2 { margin-top:0; font-size:1.2rem; }
+        ul { padding-left: 1.2rem; }
+        table { width:100%; border-collapse: collapse; }
+        th, td { border:1px solid var(--border); padding:8px; text-align:left; vertical-align: top; }
+        a { color: var(--link); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        footer { color: var(--muted); padding-bottom: 48px; }
+        .note { font-size: .95rem; color: var(--muted); }
+        .badge { display:inline-block; padding:2px 8px; border-radius:999px; background:#eef6ff; color:#0a66c2; font-size:.8rem; margin-left:8px; }
+        .qa-flag { display:inline-flex; align-items:center; gap:8px; font-size:.9rem; color:#7a4d00; background:#fff7e6; border:1px solid #ffe8bf; padding:8px 12px; border-radius: 10px; }
+        .grid { display:grid; grid-template-columns: 1fr; gap: 12px; }
+        @media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Política de Privacidad – Pixel / Pixarra</h1>
+    <div class="meta">Última actualización: 26 de octubre de 2025</div>
+    <div class="grid">
+        <div>
+            <strong>Entidad responsable:</strong> GRUPO JOCAAGURA S.A.S.<br/>
+            <strong>NIT:</strong> 901270782-7<br/>
+            <strong>Domicilio:</strong> Mosquera, Cundinamarca, Colombia
+        </div>
+        <div>
+            <strong>Contacto:</strong> <a href="mailto:soporte@jocaagura.com">soporte@jocaagura.com</a><br/>
+            <a href="/terms">Términos y Condiciones</a> <span class="badge">Legal</span>
+        </div>
+    </div>
+</header>
+
+<main>
+    <section>
+        <h2>1. Introducción</h2>
+        <p>En <strong>JOCAAGURA</strong> respetamos la privacidad de nuestros usuarios y protegemos su información personal. Esta política explica cómo <strong>Pixel</strong> (producción) y <strong>Pixarra QA</strong> (entorno de pruebas) acceden, utilizan, almacenan y protegen los datos, incluyendo aquellos autorizados mediante servicios de Google.</p>
+        <p>Al utilizar la aplicación o iniciar sesión con Google, usted acepta esta política.</p>
+    </section>
+
+    <section>
+        <h2>2. Datos que recopilamos</h2>
+        <h3>a) Datos proporcionados por el usuario</h3>
+        <ul>
+            <li>Nombre, correo electrónico y foto de perfil obtenidos mediante Google Sign-In.</li>
+            <li>Preferencias de idioma y configuración local.</li>
+        </ul>
+        <h3>b) Datos técnicos automáticos</h3>
+        <ul>
+            <li>Tipo de dispositivo, sistema operativo y versión del navegador.</li>
+            <li>Identificadores anónimos (cookies o almacenamiento local) para mejorar la experiencia.</li>
+        </ul>
+        <!-- QA ONLY -->
+        <div class="qa-flag"><strong>Solo QA:</strong> Acceso temporal a datos en hojas de cálculo propiedad de JOCAAGURA vía Google Sheets/Drive para validar funcionalidades.</div>
+        <!-- /QA ONLY -->
+    </section>
+
+    <section>
+        <h2>3. Finalidad del uso de los datos</h2>
+        <ol>
+            <li><strong>Autenticación y acceso seguro</strong> a las funcionalidades.</li>
+            <li><strong>Personalización</strong> básica (nombre/foto de perfil).</li>
+            <li><strong>Sincronización</strong> de información del usuario en Firebase/Firestore (si aplica).</li>
+            <li><strong>Pruebas controladas en QA</strong> con Google Sheets/Drive para validar lectura/escritura sobre activos del proyecto (no del usuario).</li>
+        </ol>
+        <p>No utilizamos información personal para publicidad ni la compartimos con terceros fuera del grupo JOCAAGURA.</p>
+    </section>
+
+    <section>
+        <h2>4. Base legal y consentimiento</h2>
+        <p>Tratamiento conforme a la <strong>Ley 1581 de 2012</strong>, <strong>Decreto 1377 de 2013</strong> (Colombia) y <strong>Google API Services User Data Policy</strong>. El consentimiento se obtiene al presionar <em>“Iniciar sesión con Google”</em> y autorizar los permisos.</p>
+    </section>
+
+    <section>
+        <h2>5. Almacenamiento y protección</h2>
+        <ul>
+            <li>Almacenamiento en <strong>Google Cloud/Firebase</strong> (ISO 27001, SOC 2, GDPR).</li>
+            <li>Cifrado <strong>TLS/HTTPS</strong> en tránsito y cifrado en reposo según la plataforma.</li>
+            <li>Acceso interno restringido y auditado.</li>
+            <li>Controles de respaldo y recuperación.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>6. Retención y eliminación de datos</h2>
+        <ul>
+            <li>Conservamos datos mientras la cuenta siga activa o por requisitos legales.</li>
+            <li>Para eliminación total, escriba a <a href="mailto:soporte@jocaagura.com">soporte@jocaagura.com</a> con asunto “Eliminación de datos Pixel”. Respuesta en máximo <strong>15 días hábiles</strong>.</li>
+            <li>En QA, los datos de prueba se eliminan automáticamente cada <strong>30 días</strong>.</li>
+        </ul>
+    </section>
+
+    <section>
+        <h2>7. Compartición de datos</h2>
+        <p>JOCAAGURA <strong>no vende ni alquila</strong> datos personales. Solo utiliza procesadores necesarios:</p>
+        <table>
+            <thead>
+            <tr><th>Proveedor</th><th>Finalidad</th><th>Política</th></tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td><strong>Google Firebase / Cloud</strong></td>
+                <td>Autenticación, almacenamiento, hosting</td>
+                <td><a href="https://policies.google.com/privacy" rel="noopener" target="_blank">policies.google.com/privacy</a></td>
+            </tr>
+            <tr>
+                <td><strong>Google APIs (Sign-In, Sheets, Drive)</strong></td>
+                <td>Autenticación e integración de datos (QA)</td>
+                <td><a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener" target="_blank">developers.google.com/...user-data-policy</a></td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>8. Derechos del usuario</h2>
+        <p>Puede solicitar acceso, rectificación, eliminación u oposición enviando un correo a <a href="mailto:soporte@jocaagura.com">soporte@jocaagura.com</a>. Responderemos según los plazos de la legislación colombiana (máximo 15 días hábiles).</p>
+    </section>
+
+    <section>
+        <h2>9. Menores de edad</h2>
+        <p>La app no está dirigida a menores de 13 años. Si detectamos datos de un menor, los eliminaremos al ser notificados.</p>
+    </section>
+
+    <section>
+        <h2>10. Cambios en esta política</h2>
+        <p>Podemos actualizar esta política. Al realizar cambios materiales, actualizaremos la fecha e informaremos en la app o por correo.</p>
+        <p class="note">Versión 1.0 – 26/10/2025</p>
+    </section>
+</main>
+
+<footer>
+    © 2025 GRUPO JOCAAGURA S.A.S. · <a href="/terms">Términos y Condiciones</a> · <a href="/privacy">Privacidad</a>
+</footer>
+</body>
+</html>
