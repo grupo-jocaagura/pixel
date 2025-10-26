@@ -31,7 +31,7 @@ class PixelConfig {
   static const int kAuthRefreshDebounceMs = 900;
 
   AppConfig _commonConfig({
-    required ServiceWsDatabase<Map<String, dynamic>> serviceWsDatabase,
+    required ServiceWsDb serviceWsDatabase,
     required ServiceSession serviceSession,
   }) {
     final RepositoryAuth repository = RepositoryAuthImpl(
@@ -99,7 +99,7 @@ class PixelConfig {
   }
 
   AppConfig dev() => _commonConfig(
-    serviceWsDatabase: FakeServiceWsDatabase(),
+    serviceWsDatabase: FakeServiceWsDb(),
     serviceSession: FakeServiceSession(),
   );
 
@@ -109,11 +109,10 @@ class PixelConfig {
     );
     serviceSession.processRedirectResultOnce();
 
-    final ServiceWsDatabase<Map<String, dynamic>> serviceWsDatabase =
-        GoogleSheetsCanvasDb(
-          tokenProvider: () => serviceSession.sheetsAccessToken(),
-          spreadsheetTitleOrId: 'Pixel - Mis Canvases',
-        );
+    final ServiceWsDb serviceWsDatabase = GoogleSheetsCanvasDb(
+      tokenProvider: () => serviceSession.sheetsAccessToken(),
+      spreadsheetTitleOrId: 'Pixel - Mis Canvases',
+    );
 
     return _commonConfig(
       serviceWsDatabase: serviceWsDatabase,
@@ -126,8 +125,7 @@ class PixelConfig {
       googleClientId: Env.googleClientId,
     );
 
-    final ServiceWsDatabase<Map<String, dynamic>> serviceWsDatabase =
-        ServiceFirebaseWsDatabase();
+    final ServiceWsDb serviceWsDatabase = ServiceFirebaseWsDatabase();
 
     return _commonConfig(
       serviceWsDatabase: serviceWsDatabase,
