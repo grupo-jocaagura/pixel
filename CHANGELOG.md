@@ -3,6 +3,18 @@
 This document follows the guidelines of [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.5] - 2025-10-26
+
+### added
+- **Privacy Policy (App)**: `PrivacyPolicyPage.dart` con presentación interna de la política de privacidad.
+- **UI legal reutilizable**: `SectionWidget`, `SubSectionWidget`, `PolicyTableWidget`, `InfoGridWidget` para maquetaciones consistentes y mantenibles.
+- **Privacy Policy (Web)**: `web/privacy.html` para acceso público, SEO y cumplimiento.
+- **Rutas y menú**: Registro en `legal_pages.dart` y entrada “Política de Privacidad” en `TermsMenuTileWidget`.
+
+### changed
+- **Estructura legal**: Refactor del armazón de páginas legales para unificar estilo, navegación y componentes.
+
+
 ## [0.0.4] - 2025-10-26
 
 ### added
