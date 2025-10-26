@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
-import '../../app/pixel_config.dart';
+import '../../app/bootstrap/initial_onboarding_steps.dart';
+import '../../app/env.dart';
 import '../../main.dart';
 import 'home_page.dart';
 
@@ -32,7 +33,15 @@ class SplashScreenPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final BlocOnboarding onboarding = context.appManager.onboarding;
 
-    // Kick off onboarding after first frame if still idle.
+    final BlocSession blocSession = context.appManager.requireModuleByKey(
+      BlocSession.name,
+    );
+
+    final List<OnboardingStep> onboardingSteps = buildOnboardingSteps(
+      blocSession: blocSession,
+      mode: Env.mode,
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (onboarding.state.status == OnboardingStatus.idle) {
         onboarding.configure(onboardingSteps);
