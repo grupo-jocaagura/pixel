@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 import 'package:text_responsive/text_responsive.dart';
 
+import '../../widgets/terms_menu_tile_widget.dart';
 import '../home_page.dart';
 
 class LoginPage extends StatelessWidget {
@@ -35,23 +36,31 @@ class LoginPage extends StatelessWidget {
                 children: <Widget>[
                   CircularProgressIndicator(),
                   InlineTextWidget(label),
+                  TermsMenuTileWidget(),
                 ],
               );
             }
-            return ElevatedButton(
-              onPressed: () async {
-                final Either<ErrorItem, UserModel> result = await bloc
-                    .logInWithGoogle();
-                result.fold(
-                  (ErrorItem err) => ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(err.description))),
-                  (_) => context.appManager.pageManager.pushDistinctTop(
-                    HomePage.pageModel,
-                  ),
-                );
-              },
-              child: const Text('Continuar con Google'),
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                ElevatedButton(
+                  onPressed: () async {
+                    final Either<ErrorItem, UserModel> result = await bloc
+                        .logInWithGoogle();
+                    result.fold(
+                      (ErrorItem err) => ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(err.description))),
+                      (_) => context.appManager.pageManager.pushDistinctTop(
+                        HomePage.pageModel,
+                      ),
+                    );
+                  },
+                  child: const Text('Continuar con Google'),
+                ),
+                const SizedBox(height: 150.0),
+                const TermsMenuTileWidget(),
+              ],
             );
           },
         ),

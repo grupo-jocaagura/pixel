@@ -18,8 +18,7 @@ import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 /// Manejo de errores en streams:
 /// - `streamErrorsAsErrorItemJson`: si `true`, convierte excepciones frecuentes
 ///   a `Map<String, dynamic>` con el shape de `ErrorItem.toJson()`.
-class ServiceFirebaseWsDatabase
-    implements ServiceWsDatabase<Map<String, dynamic>> {
+class ServiceFirebaseWsDatabase implements ServiceWsDb {
   ServiceFirebaseWsDatabase({
     FirebaseFirestore? firestore,
     fb.FirebaseAuth? auth,
@@ -91,8 +90,7 @@ class ServiceFirebaseWsDatabase
   // ServiceWsDatabase API
   // ---------------------------------------------------------------------------
 
-  @override
-  Future<void> saveDocument({
+  Future<void> saveDocumentA({
     required String collection,
     required String docId,
     required Map<String, dynamic> document,
@@ -107,7 +105,6 @@ class ServiceFirebaseWsDatabase
         ? _deepCopyMap(document)
         : document;
 
-    // Set replace para paridad con el fake (documento completo).
     await ref.set(safe, SetOptions(merge: false));
   }
 
@@ -121,12 +118,9 @@ class ServiceFirebaseWsDatabase
       collection,
       docId,
     ).get(const GetOptions());
-
-    // Paridad con fake: si no existe → {}
     if (!snap.exists) {
-      return <String, dynamic>{};
+      throw StateError('Document not found');
     }
-
     final Map<String, dynamic> data = Utils.mapFromDynamic(snap.data());
     return _config.deepCopies ? _deepCopyMap(data) : data;
   }
@@ -137,85 +131,38 @@ class ServiceFirebaseWsDatabase
     required String docId,
   }) {
     _ensureNotDisposed();
-
     final DocumentReference<Map<String, dynamic>> ref = _docRef(
       collection,
       docId,
     );
-
-    Map<String, dynamic>? last; // para dedupe por contenido
     final StreamController<Map<String, dynamic>> ctrl =
         StreamController<Map<String, dynamic>>.broadcast();
+    Map<String, dynamic>? last;
 
-    // 1) stream del documento
-    final StreamSubscription<DocumentSnapshot<Map<String, dynamic>>> subDoc =
-        ref.snapshots().listen(
-          (DocumentSnapshot<Map<String, dynamic>> snap) {
-            Map<String, dynamic> out = Utils.mapFromDynamic(
-              snap.data() ?? <String, dynamic>{},
-            );
-            if (_config.deepCopies) {
-              out = _deepCopyMap(out);
-            }
+    final StreamSubscription<DocumentSnapshot<Map<String, dynamic>>> sub = ref
+        .snapshots()
+        .listen((DocumentSnapshot<Map<String, dynamic>> snap) {
+          if (!snap.exists) {
+            return;
+          }
+          Map<String, dynamic> out = Utils.mapFromDynamic(
+            snap.data() ?? <String, dynamic>{},
+          );
+          if (_config.deepCopies) {
+            out = _deepCopyMap(out);
+          }
+          if (_config.dedupeByContent &&
+              last != null &&
+              _deepEqualsMap(last!, out)) {
+            return;
+          }
+          last = _deepCopyMap(out);
+          if (!ctrl.isClosed) {
+            ctrl.add(out);
+          }
+        }, onError: (Object e, StackTrace s) => _pipeErrorToStream(ctrl, e, s));
 
-            if (_config.dedupeByContent) {
-              if (last != null && _deepEqualsMap(last!, out)) {
-                return;
-              }
-              last = _deepCopyMap(out);
-            }
-            if (!ctrl.isClosed) {
-              ctrl.add(out);
-            }
-          },
-          onError: (Object e, StackTrace s) {
-            _pipeErrorToStream(ctrl, e, s);
-          },
-        );
-
-    _subs.add(subDoc);
-
-    // 2) sincronizador global (evita flicker en ráfagas)
-    final StreamSubscription<Object?> subSync = _fs.snapshotsInSync().listen(
-      (_) {},
-      onError: (Object e, StackTrace s) {
-        _pipeErrorToStream(ctrl, e, s);
-      },
-    );
-    _subs.add(subSync);
-
-    // 3) seed inicial (emitInitial)
-    if (_config.emitInitial) {
-      ref
-          .get()
-          .then((DocumentSnapshot<Map<String, dynamic>> snap) {
-            Map<String, dynamic> out = Utils.mapFromDynamic(
-              snap.data() ?? <String, dynamic>{},
-            );
-            if (_config.deepCopies) {
-              out = _deepCopyMap(out);
-            }
-
-            if (_config.dedupeByContent) {
-              if (last != null && _deepEqualsMap(last!, out)) {
-                return;
-              }
-              last = _deepCopyMap(out);
-            }
-            if (!ctrl.isClosed) {
-              ctrl.add(out);
-            }
-          })
-          .catchError((Object e, StackTrace s) {
-            _pipeErrorToStream(ctrl, e, s);
-          });
-    }
-
-    ctrl.onCancel = () async {
-      await subDoc.cancel();
-      await subSync.cancel();
-    };
-
+    ctrl.onCancel = () => sub.cancel();
     return ctrl.stream;
   }
 
@@ -324,13 +271,11 @@ class ServiceFirebaseWsDatabase
     });
   }
 
-  @override
-  Future<void> deleteDocument({
+  Future<void> deleteDocumentA({
     required String collection,
     required String docId,
   }) async {
     _ensureNotDisposed();
-    // Idempotente: si no existe, no falla.
     await _docRef(collection, docId).delete();
   }
 
@@ -537,5 +482,30 @@ class ServiceFirebaseWsDatabase
       return true;
     }
     return a == b;
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteDocument({
+    required String collection,
+    required String docId,
+  }) async {
+    _ensureNotDisposed();
+    await _docRef(collection, docId).delete();
+    return <String, dynamic>{
+      'ok': true,
+      'docId': docId,
+      'deletedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> saveDocument({
+    required String collection,
+    required String docId,
+    required Map<String, dynamic> document,
+  }) {
+    saveDocumentA(collection: collection, docId: docId, document: document);
+
+    return readDocument(collection: collection, docId: docId);
   }
 }

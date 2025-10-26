@@ -27,7 +27,7 @@ class _AuthClient extends http.BaseClient {
   }
 }
 
-class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
+class GoogleSheetsCanvasDb implements ServiceWsDb {
   GoogleSheetsCanvasDb({
     required SheetsTokenProvider tokenProvider,
     required String spreadsheetTitleOrId,
@@ -343,8 +343,7 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
 
   // ------------------------ CRUD (Local -> Sheets) -------------------
 
-  @override
-  Future<void> saveDocument({
+  Future<void> saveDocumentA({
     required String collection,
     required String docId,
     required Map<String, dynamic> document,
@@ -426,8 +425,7 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
     return doc;
   }
 
-  @override
-  Future<void> deleteDocument({
+  Future<void> deleteDocumentA({
     required String collection,
     required String docId,
   }) async {
@@ -732,6 +730,52 @@ class GoogleSheetsCanvasDb implements ServiceWsDatabase<Map<String, dynamic>> {
   void _log(String msg) {
     if (_verboseLogs) {
       debugPrint('[SheetsDb] $msg');
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> deleteDocument({
+    required String collection,
+    required String docId,
+  }) async {
+    _ensureNotDisposed();
+    _assertCollection(collection);
+    await deleteDocumentA(collection: collection, docId: docId);
+    return <String, dynamic>{
+      'ok': true,
+      'docId': docId,
+      'deletedAt': DateTime.now().toUtc().toIso8601String(),
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> saveDocument({
+    required String collection,
+    required String docId,
+    required Map<String, dynamic> document,
+  }) async {
+    _ensureNotDisposed();
+    _assertCollection(collection);
+
+    final String now = DateTime.now().toUtc().toIso8601String();
+    final Map<String, dynamic> toSave = <String, dynamic>{
+      ...document,
+      'id': docId,
+      'updatedAt': now,
+    };
+    await saveDocumentA(collection: collection, docId: docId, document: toSave);
+    return Map<String, dynamic>.unmodifiable(toSave);
+  }
+
+  void _assertCollection(String collection) {
+    if (collection.isEmpty) {
+      throw ArgumentError('collection must not be empty');
+    }
+    if (collection != _collectionName) {
+      throw ArgumentError(
+        'GoogleSheetsCanvasDb is single-collection. '
+        'Expected "$_collectionName", got "$collection".',
+      );
     }
   }
 }

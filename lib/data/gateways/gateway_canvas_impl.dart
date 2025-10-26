@@ -25,7 +25,7 @@ class GatewayCanvasImpl implements GatewayCanvas {
   );
   static const String collection = 'canvas';
 
-  final ServiceWsDatabase<Map<String, dynamic>> _db;
+  final ServiceWsDb _db;
 
   @override
   Future<Either<ErrorItem, Map<String, dynamic>>> read(String docId) async {
