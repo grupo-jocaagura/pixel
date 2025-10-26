@@ -3,6 +3,43 @@
 This document follows the guidelines of [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.4] - 2025-10-26
+
+### added
+- **Páginas legales**: `TermsAndConditionsProdPage` (Prod) y `TermsAndConditionsPage` (QA) con cobertura de Google Sign-In, privacidad de datos y “Limited Use Policy” (Prod) y cláusulas de prueba/permiso extendido (QA).
+- **Navegación**: `legal_pages.dart` con rutas registradas para ambas páginas; `TermsMenuTileWidget` para dirigir según entorno (`Env.isProd`).
+- **Widgets UI**: `MenuTileWidget` (tiles de navegación estandarizados) y `SectionTitleWidget` (encabezados de sección coherentes).
+- **Web/SEO**: `web/terms.html` (versión estática para crawlers y usuarios sin JS), `apple-touch-icon.png`.
+
+### changed
+- **Integración UI**: Inclusión del acceso a T&C en `LoginPage` y `HomePage` (visible antes y después de autenticación).
+- **Accesibilidad/Web**: Idioma del documento establecido a `es-CO` en `web/index.html`.
+
+### docs
+- **CHANGELOG.md**: Actualizado para reflejar la migración previa a **Firestore** y la reducción de scopes en producción.
+
+
+## [0.0.3] - 2025-10-10
+
+### added
+- **Firestore**: `ServiceFirebaseWsDatabase` como nuevo `ServiceWsDatabase` (Cloud Firestore) con soporte multi-tenant (`users/{uid}/canvas/{docId}`), `emitInitial`, copias profundas y deduplicación por contenido.
+- **Errores robustos**: Mapeo de `FirebaseException` y errores genéricos a `ErrorItem` consistente.
+- **Helpers de entorno**: Getters `Env.isQa` y `Env.isProd` para validaciones claras y fiables.
+- **Dependencias**: `cloud_firestore` en `pubspec.yaml`.
+- **Docs**: `firestore-setup.md` (estructura, reglas de seguridad, pasos de integración para QA/Prod).
+
+### changed
+- **Persistencia por defecto**: `PixelConfig` ahora usa **Cloud Firestore** en QA y Prod (reemplaza Google Sheets).
+- **Auth/Scopes**: Scopes de Google Sheets/Drive condicionados solo para **QA**; en Prod no se solicitan permisos innecesarios.
+- **Guardas de acceso**: `sheetsAccessToken()` lanza `UnsupportedError` fuera de QA.
+
+### removed
+- **Google Sheets DB**: Eliminados `GoogleSheetsCanvasDb` y `CoalescedTokenProvider`.
+
+### security
+- **Menos permisos en producción**: Se evita solicitar scopes de Drive/Sheets en Prod, reduciendo superficie de permisos y popups innecesarios.
+
+
 ## [0.0.1] - 2025-09-16
 
 ### added
@@ -35,23 +72,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### removed
 - **Web/Logs**: `debugPrint` obsoletos.
 - **Git ignore**: Regla que ignoraba `google-services.json` (ahora se versionan por sabor).
-
-## [0.0.3] - 2025-10-10
-
-### added
-- **Firestore**: `ServiceFirebaseWsDatabase` como nuevo `ServiceWsDatabase` (Cloud Firestore) con soporte multi-tenant (`users/{uid}/canvas/{docId}`), `emitInitial`, copias profundas y deduplicación por contenido.
-- **Errores robustos**: Mapeo de `FirebaseException` y errores genéricos a `ErrorItem` consistente.
-- **Helpers de entorno**: Getters `Env.isQa` y `Env.isProd` para validaciones claras y fiables.
-- **Dependencias**: `cloud_firestore` en `pubspec.yaml`.
-- **Docs**: `firestore-setup.md` (estructura, reglas de seguridad, pasos de integración para QA/Prod).
-
-### changed
-- **Persistencia por defecto**: `PixelConfig` ahora usa **Cloud Firestore** en QA y Prod (reemplaza Google Sheets).
-- **Auth/Scopes**: Scopes de Google Sheets/Drive condicionados solo para **QA**; en Prod no se solicitan permisos innecesarios.
-- **Guardas de acceso**: `sheetsAccessToken()` lanza `UnsupportedError` fuera de QA.
-
-### removed
-- **Google Sheets DB**: Eliminados `GoogleSheetsCanvasDb` y `CoalescedTokenProvider`.
-
-### security
-- **Menos permisos en producción**: Se evita solicitar scopes de Drive/Sheets en Prod, reduciendo superficie de permisos y popups innecesarios.

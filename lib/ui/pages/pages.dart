@@ -1,6 +1,7 @@
 import 'package:jocaaguraarchetype/jocaaguraarchetype.dart';
 
 import 'home_page.dart';
+import 'legal/legal_pages.dart';
 import 'not_found_route_page.dart';
 import 'session/login_page.dart';
 import 'speak_the_canvas_page.dart';
@@ -52,6 +53,7 @@ final PageRegistry pageRegistry = PageRegistry.fromDefs(
       model: LoginPage.pageModel,
       builder: (_, PageModel page) => const LoginPage(),
     ),
+    ...legalPages,
   ],
   notFoundBuilder: (_, PageModel page) => const NotFoundRoutePage(),
   defaultPage: SplashScreenPage.pageModel,
